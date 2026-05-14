@@ -38,6 +38,12 @@ Use os comandos abaixo, na ordem, e com as verificações indicadas:
 ## Nunca Faça
 
 - Nunca comite nem faça push na branch `main`.
+- Nunca modifique arquivos/pastas dentro de `.git` diretamente (ex.: editar `.git/config`, criar/remover locks, mexer em `.git/index`). Sempre use comandos `git` no terminal para qualquer operação (checkout, add, commit, push, branch).
 - Nunca comite/pushe segredos (ex.: `API_KEY`, `ACCESS_TOKEN`, `SECRET`, `.env`, chaves privadas, tokens em texto).
 - Nunca inclua credenciais ou chaves de API em commit message, arquivos ou mudanças.
 - Nunca faça push antes de confirmar que está na branch correta (branch-alvo) e que a branch-alvo não é `main`.
+
+## Mensagem do Commit
+
+- A mensagem do commit deve ser **sempre** gerada em **Conventional Commits**.
+- Formato obrigatório: `type(scope): subject` (ou `type: subject` se não houver scope).
