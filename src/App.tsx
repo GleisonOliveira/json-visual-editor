@@ -35,7 +35,9 @@ type NodeTarget = {
 function moveArrayItem<T>(arr: T[], fromIndex: number, toIndex: number): T[] {
   const copy = arr.slice()
   const [item] = copy.splice(fromIndex, 1)
-  copy.splice(toIndex, 0, item)
+  // After removal, indices shift left when moving forward.
+  const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex
+  copy.splice(adjustedTo, 0, item)
   return copy
 }
 
@@ -393,7 +395,6 @@ function NodeEditor(props: {
             {Object.entries(value as JsonObject).map(([k, v]) => (
               <Box
                 key={k}
-                draggable
                 onDragEnter={() => {
                   setDropHover({ kind: 'object', key: k })
                 }}
@@ -402,17 +403,6 @@ function NodeEditor(props: {
                     if (cur?.kind === 'object' && cur.key === k) return null
                     return cur
                   })
-                }}
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    'application/jsonve-dnd',
-                    JSON.stringify({
-                      containerId: `${path.join('-')}`,
-                      kind: 'object',
-                      fromKey: k,
-                    })
-                  )
-                  e.dataTransfer.effectAllowed = 'move'
                 }}
                 onDragOver={(e) => {
                   e.preventDefault()
@@ -428,7 +418,7 @@ function NodeEditor(props: {
                     fromKey?: string
                     fromIndex?: number
                   }
-                  if (data.containerId !== `${path.join('-')}`) return
+                  if (data.containerId !== JSON.stringify(path)) return
                   if (data.kind !== 'object') return
                   if (!data.fromKey) return
                   onUpdate(path, moveObjectKey(value as JsonObject, data.fromKey, k))
@@ -440,7 +430,7 @@ function NodeEditor(props: {
                   gap: 1,
                   py: 0.5,
                   userSelect: 'none',
-                  cursor: 'grab',
+                  cursor: 'default',
                   outline:
                     dropHover?.kind === 'object' && dropHover.key === k
                       ? '2px solid rgba(170,59,255,0.7)'
@@ -503,7 +493,24 @@ function NodeEditor(props: {
                 </IconButton>
 
                 <Box sx={{ color: 'rgba(0,0,0,0.35)', ml: -0.5 }}>
-                  <GripVertical size={14} />
+                  <Box
+                    draggable
+                    onDragStart={(e) => {
+                      const containerId = JSON.stringify(path)
+                      e.dataTransfer.setData(
+                        'application/jsonve-dnd',
+                        JSON.stringify({
+                          containerId,
+                          kind: 'object',
+                          fromKey: k,
+                        })
+                      )
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    sx={{ display: 'inline-flex', cursor: 'grab' }}
+                  >
+                    <GripVertical size={14} />
+                  </Box>
                 </Box>
               </Box>
             ))}
@@ -520,7 +527,6 @@ function NodeEditor(props: {
             {(value as JsonArray).map((item, i) => (
               <Box
                 key={i}
-                draggable
                 onDragEnter={() => {
                   setDropHover({ kind: 'array', index: i })
                 }}
@@ -529,17 +535,6 @@ function NodeEditor(props: {
                     if (cur?.kind === 'array' && cur.index === i) return null
                     return cur
                   })
-                }}
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    'application/jsonve-dnd',
-                    JSON.stringify({
-                      containerId: `${path.join('-')}`,
-                      kind: 'array',
-                      fromIndex: i,
-                    })
-                  )
-                  e.dataTransfer.effectAllowed = 'move'
                 }}
                 onDragOver={(e) => {
                   e.preventDefault()
@@ -555,7 +550,7 @@ function NodeEditor(props: {
                     fromKey?: string
                     fromIndex?: number
                   }
-                  if (data.containerId !== `${path.join('-')}`) return
+                  if (data.containerId !== JSON.stringify(path)) return
                   if (data.kind !== 'array') return
                   if (typeof data.fromIndex !== 'number') return
                   onUpdate(path, moveArrayItem(value as JsonArray, data.fromIndex, i))
@@ -593,6 +588,27 @@ function NodeEditor(props: {
                     onUpdate={onUpdate}
                     hideNodeLabel={true}
                   />
+                </Box>
+
+                <Box sx={{ color: 'rgba(0,0,0,0.35)', ml: -0.5 }}>
+                  <Box
+                    draggable
+                    onDragStart={(e) => {
+                      const containerId = JSON.stringify(path)
+                      e.dataTransfer.setData(
+                        'application/jsonve-dnd',
+                        JSON.stringify({
+                          containerId,
+                          kind: 'array',
+                          fromIndex: i,
+                        })
+                      )
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    sx={{ display: 'inline-flex', cursor: 'grab' }}
+                  >
+                    <GripVertical size={14} />
+                  </Box>
                 </Box>
 
                 <Tooltip title={`Deletar [${i}]`} arrow>
@@ -1006,13 +1022,15 @@ export default function App() {
 
                 </Box>
 
-                <NodeEditor
-                  value={parsed}
-                  path={[]}
-                  onUpdate={(p, next) =>
-                    setJsonValue((prev: JsonValue) => updatePrimitive(prev, p, next))
-                  }
-                />
+                <Box sx={{ overflowX: 'auto', width: '100%' }}>
+                  <NodeEditor
+                    value={parsed}
+                    path={[]}
+                    onUpdate={(p, next) =>
+                      setJsonValue((prev: JsonValue) => updatePrimitive(prev, p, next))
+                    }
+                  />
+                </Box>
               </Box>
             </CardContent>
           </Card>
