@@ -243,7 +243,7 @@ function NodeEditor(props: {
   if (inlineHeaderOnly && mode === 'all' && isCompactRow && ['string', 'number', 'boolean', 'null'].includes(nodeType)) {
     const isNullActive = nodeType === 'null'
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mt: 0 }}>
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel id={`type-${path.join('-')}`}>Tipo</InputLabel>
           <Select
@@ -313,9 +313,9 @@ function NodeEditor(props: {
   // Tipo + valor somente (sem filhos): usado para alinhar na linha do nome/index.
   if (mode === 'typeValue') {
     if (nodeType === 'object' || nodeType === 'array') {
-      // Mostra seletor de tipo e garante uma "linha 2" vazia no layout externo.
+      // Seletor de tipo como irmão direto do nome do campo.
       return (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <>
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <InputLabel id={`type-${path.join('-')}`}>Tipo</InputLabel>
             <Select
@@ -333,8 +333,7 @@ function NodeEditor(props: {
               <MenuItem value="null">Nulo</MenuItem>
             </Select>
           </FormControl>
-          <Box sx={{ width: 10 }} />
-        </Box>
+        </>
       )
     }
 
@@ -342,7 +341,7 @@ function NodeEditor(props: {
     // (mantém o mesmo comportamento de valor/nulo)
     const isNullActive = nodeType === 'null'
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <>
         <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel id={`type-${path.join('-')}`}>Tipo</InputLabel>
           <Select
@@ -361,60 +360,58 @@ function NodeEditor(props: {
           </Select>
         </FormControl>
 
-        <Box sx={{ width: 220, maxWidth: '100%', ml: -0.5 }}>
-          {nodeType === 'string' ? (
-            <TextField
-              size="small"
-              value={value ?? ''}
-              variant="outlined"
-              onChange={(e) => onUpdate(path, e.target.value)}
-              disabled={isNullActive}
-              sx={{ width: '100%', minWidth: 120 }}
-            />
-          ) : nodeType === 'number' ? (
-            <TextField
-              size="small"
-              value={String(value ?? 0)}
-              variant="outlined"
-              inputMode="decimal"
-              onChange={(e) => {
-                const n = Number(e.target.value)
-                onUpdate(path, Number.isFinite(n) ? n : 0)
-              }}
-              disabled={isNullActive}
-              sx={{ width: '100%', minWidth: 120 }}
-            />
-          ) : nodeType === 'boolean' ? (
-            <FormControl size="small" fullWidth disabled={isNullActive} sx={{ minWidth: 120 }}>
-              <InputLabel id={`bool-${path.join('-')}`}>Valor</InputLabel>
-              <Select
-                labelId={`bool-${path.join('-')}`}
-                value={String(value)}
-                label="Valor"
-                onChange={(e) => onUpdate(path, e.target.value === 'true')}
-                sx={{ textAlign: 'left', minWidth: 120 }}
-              >
-                <MenuItem value="true">true</MenuItem>
-                <MenuItem value="false">false</MenuItem>
-              </Select>
-            </FormControl>
-          ) : (
-            // Mantém altura estável quando "Nulo" estiver ativo.
-            <Box sx={{ height: 40 }} />
-          )}
-        </Box>
-      </Box>
+        {nodeType === 'string' ? (
+          <TextField
+            size="small"
+            value={value ?? ''}
+            variant="outlined"
+            onChange={(e) => onUpdate(path, e.target.value)}
+            disabled={isNullActive}
+            sx={{ minWidth: 160, flex: '0 0 160px' }}
+          />
+        ) : nodeType === 'number' ? (
+          <TextField
+            size="small"
+            value={String(value ?? 0)}
+            variant="outlined"
+            inputMode="decimal"
+            onChange={(e) => {
+              const n = Number(e.target.value)
+              onUpdate(path, Number.isFinite(n) ? n : 0)
+            }}
+            disabled={isNullActive}
+            sx={{ minWidth: 160, flex: '0 0 160px' }}
+          />
+        ) : nodeType === 'boolean' ? (
+          <FormControl size="small" fullWidth disabled={isNullActive} sx={{ minWidth: 120 }}>
+            <InputLabel id={`bool-${path.join('-')}`}>Valor</InputLabel>
+            <Select
+              labelId={`bool-${path.join('-')}`}
+              value={String(value)}
+              label="Valor"
+              onChange={(e) => onUpdate(path, e.target.value === 'true')}
+              sx={{ textAlign: 'left', minWidth: 120 }}
+            >
+              <MenuItem value="true">true</MenuItem>
+              <MenuItem value="false">false</MenuItem>
+            </Select>
+          </FormControl>
+        ) : (
+          // Mantém altura estável quando "Nulo" estiver ativo.
+          <Box sx={{ height: 40 }} />
+        )}
+      </>
     )
   }
 
   // Filhos apenas: não renderiza cabeçalho (tipo/valor), apenas as seções object/array abaixo.
   if (onlyChildren) {
     return (
-      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
         {!isCollapsed &&
           nodeType === 'object' &&
           Object.entries(value as JsonObject).length > 0 && (
-            <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+            <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%', display: 'flex', flexDirection: 'column' }}>
               {Object.entries(value as JsonObject).map(([k, v]) => (
                 <Box
                   key={k}
@@ -500,7 +497,7 @@ function NodeEditor(props: {
                       size="small"
                       defaultValue={k}
                       variant="outlined"
-                      sx={{ width: 160, flex: '0 0 auto', '& input': { fontFamily: 'var(--mono)' } }}
+                      sx={{ width: 160, flex: '0 0 auto' }}
                       onBlur={(e) => {
                         const nextKey = e.target.value.trim()
                         if (!nextKey || nextKey === k) return
@@ -562,7 +559,6 @@ function NodeEditor(props: {
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 1,
                   width: '100%',
                   outline:
                     dropHover?.kind === 'array' && dropHover.index === i
@@ -784,7 +780,7 @@ function NodeEditor(props: {
                       size="small"
                       defaultValue={k}
                       variant="outlined"
-                      sx={{ width: 160, flex: '0 0 auto', '& input': { fontFamily: 'var(--mono)' } }}
+                      sx={{ width: 160, flex: '0 0 auto' }}
                       onBlur={(e) => {
                         const nextKey = e.target.value.trim()
                         if (!nextKey || nextKey === k) return
@@ -1099,9 +1095,8 @@ function NodeEditor(props: {
                   outlineOffset: 1,
                 }}
               >
-                {/* Linha 1: nome + ações */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minWidth: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Box
                       draggable
                       onDragStart={(e) => {
@@ -1121,29 +1116,29 @@ function NodeEditor(props: {
                       <GripVertical size={14} />
                     </Box>
 
-                    <IconButton
-                      size="small"
-                      aria-label={`Remover ${k}`}
-                      onClick={() => {
-                        onUpdate(path, (() => {
-                          const obj = { ...(value as JsonObject) }
-                          delete obj[k]
-                          return obj
-                        })())
-                      }}
-                      color="error"
-                    >
-                      <Tooltip title={`Deletar ${k}`} arrow>
+                    <Tooltip title={`Deletar ${k}`} arrow>
+                      <IconButton
+                        size="small"
+                        aria-label={`Remover ${k}`}
+                        onClick={() => {
+                          onUpdate(path, (() => {
+                            const obj = { ...(value as JsonObject) }
+                            delete obj[k]
+                            return obj
+                          })())
+                        }}
+                        color="error"
+                      >
                         <Trash2 size={16} />
-                      </Tooltip>
-                    </IconButton>
+                      </IconButton>
+                    </Tooltip>
                   </Box>
 
                   <TextField
                     size="small"
                     defaultValue={k}
                     variant="outlined"
-                    sx={{ width: 160, '& input': { fontFamily: 'var(--mono)' } }}
+                    sx={{ width: 160, flex: '0 0 160px' }}
                     onBlur={(e) => {
                       const nextKey = e.target.value.trim()
                       if (!nextKey || nextKey === k) return
@@ -1156,15 +1151,13 @@ function NodeEditor(props: {
                     }}
                   />
 
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <NodeEditor
-                      value={v}
-                      path={[...path, k]}
-                      onUpdate={onUpdate}
-                      hideNodeLabel={true}
-                      mode="typeValue"
-                    />
-                  </Box>
+                  <NodeEditor
+                    value={v}
+                    path={[...path, k]}
+                    onUpdate={onUpdate}
+                    hideNodeLabel={true}
+                    mode="typeValue"
+                  />
                 </Box>
 
                 {/* Linha 2: só para nós com filhos (object/array) */}
@@ -1247,8 +1240,7 @@ function NodeEditor(props: {
                   outlineOffset: 1,
                 }}
               >
-                {/* Ações à esquerda (antes do índice) */}
-                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box
                     draggable
                     onDragStart={(e) => {
@@ -1286,20 +1278,20 @@ function NodeEditor(props: {
                   </Tooltip>
                 </Box>
 
-                <Typography variant="body2" sx={{ fontFamily: 'var(--mono)', width: 140 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ fontFamily: 'var(--mono)', width: 140, flex: '0 0 140px' }}
+                >
                   {`[${i}]`}
                 </Typography>
 
-                  {/* Tipo + value na mesma linha do índice */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <NodeEditor
-                      value={item}
-                      path={[...path, i]}
-                      onUpdate={onUpdate}
-                      hideNodeLabel={true}
-                      mode="typeValue"
-                    />
-                  </Box>
+                <NodeEditor
+                  value={item}
+                  path={[...path, i]}
+                  onUpdate={onUpdate}
+                  hideNodeLabel={true}
+                  mode="typeValue"
+                />
 
                 {/* Linha 2: só para nós com filhos (object/array) */}
                 {Array.isArray(item) || (typeof item === 'object' && item !== null) ? (
