@@ -194,6 +194,7 @@ function NodeEditor(props: {
   const [dropHover, setDropHover] = useState<null | { kind: 'object'; key: string } | { kind: 'array'; index: number }>(
     null
   )
+  const [collapsedNodes, setCollapsedNodes] = useState<Record<string, boolean>>({})
 
   const nodeType: 'null' | 'object' | 'array' | 'string' | 'number' | 'boolean' =
     value === null
@@ -213,6 +214,8 @@ function NodeEditor(props: {
   const isRoot = path.length === 0
   const isCompactRow = !!hideNodeLabel && !isRoot
   const onlyChildren = mode === 'childrenOnly'
+  const pathKey = JSON.stringify(path)
+  const isCollapsed = collapsedNodes[pathKey] ?? false
 
   const setNodeType = (nextType: typeof nodeType) => {
     if (nextType === nodeType) return
@@ -226,6 +229,13 @@ function NodeEditor(props: {
       isNull: nextType === 'null',
     })
     onUpdate(path, next)
+  }
+
+  const toggleCollapse = () => {
+    setCollapsedNodes((cur) => ({
+      ...cur,
+      [pathKey]: !cur[pathKey],
+    }))
   }
 
   // Compact mode (used inside object properties list): keep a single-row layout
@@ -400,10 +410,11 @@ function NodeEditor(props: {
   // Filhos apenas: não renderiza cabeçalho (tipo/valor), apenas as seções object/array abaixo.
   if (onlyChildren) {
     return (
-      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        {nodeType === 'object' &&
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {!isCollapsed &&
+          nodeType === 'object' &&
           Object.entries(value as JsonObject).length > 0 && (
-            <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%' }}>
+            <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
               {Object.entries(value as JsonObject).map(([k, v]) => (
                 <Box
                   key={k}
@@ -437,7 +448,7 @@ function NodeEditor(props: {
                   sx={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 0.5,
+                    gap: 1,
                     width: '100%',
                     outline:
                       dropHover?.kind === 'object' && dropHover.key === k
@@ -447,7 +458,7 @@ function NodeEditor(props: {
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '0 0 auto' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
                       <Box
                         draggable
                         onDragStart={(e) => {
@@ -507,7 +518,7 @@ function NodeEditor(props: {
                     </Box>
                   </Box>
                   {Array.isArray(v) || (typeof v === 'object' && v !== null) ? (
-                    <Box sx={{ width: '100%', p: 1, border: '1px dashed rgba(0,0,0,0.12)', borderRadius: 1 }}>
+                    <Box sx={{ p: 1, border: '1px dashed rgba(0,0,0,0.12)', borderRadius: 1 }}>
                       <NodeEditor value={v} path={[...path, k]} onUpdate={onUpdate} hideNodeLabel={true} mode="childrenOnly" />
                     </Box>
                   ) : null}
@@ -516,8 +527,8 @@ function NodeEditor(props: {
             </Box>
           )}
 
-        {nodeType === 'array' && (value as JsonArray).length > 0 && (
-          <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%' }}>
+        {!isCollapsed && nodeType === 'array' && (value as JsonArray).length > 0 && (
+          <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%', display: 'flex', flexDirection: 'column', gap: 0.75 }}>
             {(value as JsonArray).map((item, i) => (
               <Box
                 key={i}
@@ -551,7 +562,7 @@ function NodeEditor(props: {
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 0.5,
+                  gap: 1,
                   width: '100%',
                   outline:
                     dropHover?.kind === 'array' && dropHover.index === i
@@ -561,7 +572,7 @@ function NodeEditor(props: {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '0 0 auto' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
                     <Box
                       draggable
                       onDragStart={(e) => {
@@ -608,7 +619,7 @@ function NodeEditor(props: {
                   </Box>
                 </Box>
                 {Array.isArray(item) || (typeof item === 'object' && item !== null) ? (
-                  <Box sx={{ width: '100%', p: 1, border: '1px dashed rgba(0,0,0,0.12)', borderRadius: 1 }}>
+                  <Box sx={{ p: 1, border: '1px dashed rgba(0,0,0,0.12)', borderRadius: 1 }}>
                     <NodeEditor value={item} path={[...path, i]} onUpdate={onUpdate} hideNodeLabel={true} mode="childrenOnly" />
                   </Box>
                 ) : null}
@@ -648,6 +659,15 @@ function NodeEditor(props: {
             <MenuItem value="null">Nulo</MenuItem>
           </Select>
         </FormControl>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={toggleCollapse}
+          sx={{ minWidth: 34, width: 34, height: 32, px: 0, flex: '0 0 auto' }}
+          aria-label={isCollapsed ? 'Expandir' : 'Recolher'}
+        >
+          {isCollapsed ? '+' : '-'}
+        </Button>
       </Box>
     )
 
@@ -660,13 +680,17 @@ function NodeEditor(props: {
 
     const Children = (
       <>
-        {nodeType === 'object' &&
+        {!isCollapsed &&
+          nodeType === 'object' &&
           Object.entries(value as JsonObject).length > 0 && (
             <Box
               sx={{
                 pl: 0.5,
                 ml: -0.25,
                 mt: 0.5,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.75,
               }}
             >
               {Object.entries(value as JsonObject).map(([k, v]) => (
@@ -705,7 +729,7 @@ function NodeEditor(props: {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'stretch',
-                  gap: 0.5,
+                  gap: 1,
                   py: 0.5,
                   width: '100%',
                   userSelect: 'none',
@@ -718,7 +742,7 @@ function NodeEditor(props: {
                 }}
               >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '0 0 auto' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '0 0 auto' }}>
                       <Box
                         draggable
                         onDragStart={(e) => {
@@ -794,8 +818,8 @@ function NodeEditor(props: {
             </Box>
           )}
 
-        {nodeType === 'array' && (value as JsonArray).length > 0 && (
-          <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5 }}>
+        {!isCollapsed && nodeType === 'array' && (value as JsonArray).length > 0 && (
+          <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
             {(value as JsonArray).map((item, i) => (
               <Box
                 key={i}
@@ -830,7 +854,7 @@ function NodeEditor(props: {
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'stretch',
-                  gap: 0.5,
+                  gap: 1,
                   py: 0.5,
                   width: '100%',
                   userSelect: 'none',
@@ -843,7 +867,7 @@ function NodeEditor(props: {
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center', flex: '0 0 auto' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center', flex: '0 0 auto' }}>
                     <Box
                       draggable
                       onDragStart={(e) => {
@@ -921,7 +945,7 @@ function NodeEditor(props: {
     )
 
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', mt: 0, gap: 0.5 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', mt: 0, gap: 1 }}>
         {Header}
         {Children}
       </Box>
@@ -1004,12 +1028,23 @@ function NodeEditor(props: {
                   <MenuItem value="boolean">Boolean</MenuItem>
                 </Select>
               </FormControl>
+              {nodeType === 'object' || nodeType === 'array' ? (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={toggleCollapse}
+                  sx={{ minWidth: 34, width: 34, height: 32, px: 0, flex: '0 0 auto' }}
+                  aria-label={isCollapsed ? 'Expandir' : 'Recolher'}
+                >
+                  {isCollapsed ? '+' : '-'}
+                </Button>
+              ) : null}
             </Box>
           )}
         </>
       )}
 
-      {nodeType === 'object' &&
+      {!isCollapsed && nodeType === 'object' &&
         Object.entries(value as JsonObject).length > 0 && (
           <Box
             sx={{
@@ -1053,7 +1088,7 @@ function NodeEditor(props: {
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 0.5,
+                  gap: 1,
                   py: 0.5,
                   userSelect: 'none',
                   cursor: 'default',
@@ -1066,7 +1101,7 @@ function NodeEditor(props: {
               >
                 {/* Linha 1: nome + ações */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center' }}>
                     <Box
                       draggable
                       onDragStart={(e) => {
@@ -1157,7 +1192,7 @@ function NodeEditor(props: {
           </Box>
         )}
 
-      {nodeType === 'array' &&
+      {!isCollapsed && nodeType === 'array' &&
         (value as JsonArray).length > 0 && (
           <Box
             sx={{
@@ -1213,7 +1248,7 @@ function NodeEditor(props: {
                 }}
               >
                 {/* Ações à esquerda (antes do índice) */}
-                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center' }}>
                   <Box
                     draggable
                     onDragStart={(e) => {
