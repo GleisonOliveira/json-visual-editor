@@ -187,8 +187,10 @@ function NodeEditor(props: {
   path: Array<string | number>
   onUpdate: (path: Array<string | number>, next: any) => void
   hideNodeLabel?: boolean
+  inlineHeaderOnly?: boolean
+  mode?: 'all' | 'typeValue' | 'childrenOnly'
 }) {
-  const { value, path, onUpdate, hideNodeLabel } = props
+  const { value, path, onUpdate, hideNodeLabel, inlineHeaderOnly, mode = 'all' } = props
   const [dropHover, setDropHover] = useState<null | { kind: 'object'; key: string } | { kind: 'array'; index: number }>(
     null
   )
@@ -210,6 +212,7 @@ function NodeEditor(props: {
 
   const isRoot = path.length === 0
   const isCompactRow = !!hideNodeLabel && !isRoot
+  const onlyChildren = mode === 'childrenOnly'
 
   const setNodeType = (nextType: typeof nodeType) => {
     if (nextType === nodeType) return
@@ -227,11 +230,11 @@ function NodeEditor(props: {
 
   // Compact mode (used inside object properties list): keep a single-row layout
   // regardless of the selected type, to avoid vertical shifting.
-  if (isCompactRow && ['string', 'number', 'boolean', 'null'].includes(nodeType)) {
+  if (inlineHeaderOnly && mode === 'all' && isCompactRow && ['string', 'number', 'boolean', 'null'].includes(nodeType)) {
     const isNullActive = nodeType === 'null'
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0 }}>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
           <InputLabel id={`type-${path.join('-')}`}>Tipo</InputLabel>
           <Select
             labelId={`type-${path.join('-')}`}
@@ -241,6 +244,7 @@ function NodeEditor(props: {
               const nextType = e.target.value as typeof nodeType
               setNodeType(nextType)
             }}
+            sx={{ textAlign: 'left', minWidth: 120 }}
           >
             <MenuItem value="object">Objeto</MenuItem>
             <MenuItem value="array">Array</MenuItem>
@@ -250,65 +254,443 @@ function NodeEditor(props: {
             <MenuItem value="null">Nulo</MenuItem>
           </Select>
         </FormControl>
-
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          <Box sx={{ width: 220, maxWidth: '100%' }}>
-            {nodeType === 'string' ? (
-              <TextField
-                size="small"
-                value={value ?? ''}
-                variant="outlined"
-                onChange={(e) => onUpdate(path, e.target.value)}
-                disabled={isNullActive}
-                sx={{ width: '100%' }}
-              />
-            ) : nodeType === 'number' ? (
-              <TextField
-                size="small"
-                value={String(value ?? 0)}
-                variant="outlined"
-                inputMode="decimal"
-                onChange={(e) => {
-                  const n = Number(e.target.value)
-                  onUpdate(path, Number.isFinite(n) ? n : 0)
-                }}
-                disabled={isNullActive}
-                sx={{ width: '100%' }}
-              />
-            ) : nodeType === 'boolean' ? (
-              <FormControl size="small" fullWidth disabled={isNullActive}>
-                <InputLabel id={`bool-${path.join('-')}`}>Valor</InputLabel>
-                <Select
-                  labelId={`bool-${path.join('-')}`}
-                  value={String(value)}
-                  label="Valor"
-                  onChange={(e) => onUpdate(path, e.target.value === 'true')}
-                >
-                  <MenuItem value="true">true</MenuItem>
-                  <MenuItem value="false">false</MenuItem>
-                </Select>
-              </FormControl>
-            ) : (
-              // When "Nulo" is selected, hide the value field.
-              <Box sx={{ height: 40 }} />
-            )}
-          </Box>
+        <Box sx={{ width: 220, maxWidth: '100%', ml: -0.5 }}>
+          {nodeType === 'string' ? (
+            <TextField
+              size="small"
+              value={value ?? ''}
+              variant="outlined"
+              onChange={(e) => onUpdate(path, e.target.value)}
+              disabled={isNullActive}
+              sx={{ width: '100%', minWidth: 120 }}
+            />
+          ) : nodeType === 'number' ? (
+            <TextField
+              size="small"
+              value={String(value ?? 0)}
+              variant="outlined"
+              inputMode="decimal"
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                onUpdate(path, Number.isFinite(n) ? n : 0)
+              }}
+              disabled={isNullActive}
+              sx={{ width: '100%', minWidth: 120 }}
+            />
+          ) : nodeType === 'boolean' ? (
+            <FormControl size="small" fullWidth disabled={isNullActive} sx={{ minWidth: 120 }}>
+              <InputLabel id={`bool-${path.join('-')}`}>Valor</InputLabel>
+              <Select
+                labelId={`bool-${path.join('-')}`}
+                value={String(value)}
+                label="Valor"
+                onChange={(e) => onUpdate(path, e.target.value === 'true')}
+                sx={{ textAlign: 'left', minWidth: 120 }}
+              >
+                <MenuItem value="true">true</MenuItem>
+                <MenuItem value="false">false</MenuItem>
+              </Select>
+            </FormControl>
+          ) : (
+            // When "Nulo" is selected, keep height stable.
+            <Box sx={{ height: 40 }} />
+          )}
         </Box>
+      </Box>
+    )
+  }
+
+  // Tipo + valor somente (sem filhos): usado para alinhar na linha do nome/index.
+  if (mode === 'typeValue') {
+    if (nodeType === 'object' || nodeType === 'array') {
+      // Mostra seletor de tipo e garante uma "linha 2" vazia no layout externo.
+      return (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FormControl size="small" sx={{ minWidth: 120 }}>
+            <InputLabel id={`type-${path.join('-')}`}>Tipo</InputLabel>
+            <Select
+              labelId={`type-${path.join('-')}`}
+              value={nodeType}
+              label="Tipo"
+              onChange={(e) => setNodeType(e.target.value as typeof nodeType)}
+              sx={{ textAlign: 'left', minWidth: 120 }}
+            >
+              <MenuItem value="object">Objeto</MenuItem>
+              <MenuItem value="array">Array</MenuItem>
+              <MenuItem value="string">Texto</MenuItem>
+              <MenuItem value="number">Número</MenuItem>
+              <MenuItem value="boolean">Boolean</MenuItem>
+              <MenuItem value="null">Nulo</MenuItem>
+            </Select>
+          </FormControl>
+          <Box sx={{ width: 10 }} />
+        </Box>
+      )
+    }
+
+    // Para primitivos, reutiliza o layout compacto do seletor + input.
+    // (mantém o mesmo comportamento de valor/nulo)
+    const isNullActive = nodeType === 'null'
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel id={`type-${path.join('-')}`}>Tipo</InputLabel>
+          <Select
+            labelId={`type-${path.join('-')}`}
+            value={nodeType}
+            label="Tipo"
+            onChange={(e) => setNodeType(e.target.value as typeof nodeType)}
+            sx={{ textAlign: 'left', minWidth: 120 }}
+          >
+            <MenuItem value="string">Texto</MenuItem>
+            <MenuItem value="number">Número</MenuItem>
+            <MenuItem value="boolean">Boolean</MenuItem>
+            <MenuItem value="object">Objeto</MenuItem>
+            <MenuItem value="array">Array</MenuItem>
+            <MenuItem value="null">Nulo</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Box sx={{ width: 220, maxWidth: '100%', ml: -0.5 }}>
+          {nodeType === 'string' ? (
+            <TextField
+              size="small"
+              value={value ?? ''}
+              variant="outlined"
+              onChange={(e) => onUpdate(path, e.target.value)}
+              disabled={isNullActive}
+              sx={{ width: '100%', minWidth: 120 }}
+            />
+          ) : nodeType === 'number' ? (
+            <TextField
+              size="small"
+              value={String(value ?? 0)}
+              variant="outlined"
+              inputMode="decimal"
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                onUpdate(path, Number.isFinite(n) ? n : 0)
+              }}
+              disabled={isNullActive}
+              sx={{ width: '100%', minWidth: 120 }}
+            />
+          ) : nodeType === 'boolean' ? (
+            <FormControl size="small" fullWidth disabled={isNullActive} sx={{ minWidth: 120 }}>
+              <InputLabel id={`bool-${path.join('-')}`}>Valor</InputLabel>
+              <Select
+                labelId={`bool-${path.join('-')}`}
+                value={String(value)}
+                label="Valor"
+                onChange={(e) => onUpdate(path, e.target.value === 'true')}
+                sx={{ textAlign: 'left', minWidth: 120 }}
+              >
+                <MenuItem value="true">true</MenuItem>
+                <MenuItem value="false">false</MenuItem>
+              </Select>
+            </FormControl>
+          ) : (
+            // Mantém altura estável quando "Nulo" estiver ativo.
+            <Box sx={{ height: 40 }} />
+          )}
+        </Box>
+      </Box>
+    )
+  }
+
+  // Filhos apenas: não renderiza cabeçalho (tipo/valor), apenas as seções object/array abaixo.
+
+  // Quando em modo compacto (hideNodeLabel=true) e o nó tem filhos (object/array),
+  // separe "Tipo" (linha 1) do bloco dos subitens (linha 2) para não ficarem no mesmo container.
+  if (hideNodeLabel && !isRoot && (nodeType === 'object' || nodeType === 'array') && mode !== 'childrenOnly') {
+    const Header = (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0 }}>
+        <FormControl size="small" fullWidth sx={{ minWidth: 170 }}>
+          <InputLabel id={`type-${path.join('-')}`}>Tipo</InputLabel>
+          <Select
+            labelId={`type-${path.join('-')}`}
+            value={nodeType}
+            label="Tipo"
+            onChange={(e) => setNodeType(e.target.value as typeof nodeType)}
+          >
+            <MenuItem value="object">Objeto</MenuItem>
+            <MenuItem value="array">Array</MenuItem>
+            <MenuItem value="string">Texto</MenuItem>
+            <MenuItem value="number">Número</MenuItem>
+            <MenuItem value="boolean">Boolean</MenuItem>
+            <MenuItem value="null">Nulo</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+    )
+
+    const hasChildren =
+      nodeType === 'object'
+        ? Object.entries(value as JsonObject).length > 0
+        : nodeType === 'array'
+          ? (value as JsonArray).length > 0
+          : false
+
+    const Children = (
+      <>
+        {nodeType === 'object' &&
+          Object.entries(value as JsonObject).length > 0 && (
+            <Box
+              sx={{
+                pl: 0.5,
+                ml: -0.25,
+                mt: 0.5,
+              }}
+            >
+              {Object.entries(value as JsonObject).map(([k, v]) => (
+                <Box
+                  key={k}
+                  onDragEnter={() => {
+                    setDropHover({ kind: 'object', key: k })
+                  }}
+                  onDragLeave={() => {
+                    setDropHover((cur) => {
+                      if (cur?.kind === 'object' && cur.key === k) return null
+                      return cur
+                    })
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const raw = e.dataTransfer.getData('application/jsonve-dnd')
+                    if (!raw) return
+                    const data = JSON.parse(raw) as {
+                      containerId: string
+                      kind: 'object' | 'array'
+                      fromKey?: string
+                      fromIndex?: number
+                    }
+                    if (data.containerId !== JSON.stringify(path)) return
+                    if (data.kind !== 'object') return
+                    if (!data.fromKey) return
+                    onUpdate(path, moveObjectKey(value as JsonObject, data.fromKey, k))
+                    setDropHover(null)
+                  }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                    py: 0.5,
+                    userSelect: 'none',
+                    cursor: 'default',
+                    outline:
+                      dropHover?.kind === 'object' && dropHover.key === k
+                        ? '2px solid rgba(170,59,255,0.7)'
+                        : 'none',
+                    outlineOffset: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Box
+                        draggable
+                        onDragStart={(e) => {
+                          const containerId = JSON.stringify(path)
+                          e.dataTransfer.setData(
+                            'application/jsonve-dnd',
+                            JSON.stringify({
+                              containerId,
+                              kind: 'object',
+                              fromKey: k,
+                            })
+                          )
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        sx={{ display: 'inline-flex', cursor: 'grab', color: 'rgba(0,0,0,0.35)' }}
+                      >
+                        <GripVertical size={14} />
+                      </Box>
+
+                      <IconButton
+                        size="small"
+                        aria-label={`Remover ${k}`}
+                        onClick={() => {
+                          onUpdate(path, (() => {
+                            const obj = { ...(value as JsonObject) }
+                            delete obj[k]
+                            return obj
+                          })())
+                        }}
+                        color="error"
+                      >
+                        <Tooltip title={`Deletar ${k}`} arrow>
+                          <Trash2 size={16} />
+                        </Tooltip>
+                      </IconButton>
+
+                      <TextField
+                        size="small"
+                        defaultValue={k}
+                        variant="outlined"
+                        sx={{ width: 160, '& input': { fontFamily: 'var(--mono)' } }}
+                        onBlur={(e) => {
+                          const nextKey = e.target.value.trim()
+                          if (!nextKey || nextKey === k) return
+                          onUpdate(path, (() => {
+                            const obj = { ...(value as JsonObject) }
+                            obj[nextKey] = obj[k]
+                            delete obj[k]
+                            return obj
+                          })())
+                        }}
+                      />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        flex: 1,
+                        minWidth: 0,
+                        p: Array.isArray(v) || (typeof v === 'object' && v !== null) ? 1 : 0,
+                        border:
+                          Array.isArray(v) || (typeof v === 'object' && v !== null)
+                            ? '1px dashed rgba(0,0,0,0.12)'
+                            : 'none',
+                        borderRadius:
+                          Array.isArray(v) || (typeof v === 'object' && v !== null) ? 1 : undefined,
+                      }}
+                    >
+                      <NodeEditor value={v} path={[...path, k]} onUpdate={onUpdate} hideNodeLabel={true} />
+                    </Box>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+
+        {nodeType === 'array' && (value as JsonArray).length > 0 && (
+          <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5 }}>
+            {(value as JsonArray).map((item, i) => (
+              <Box
+                key={i}
+                onDragEnter={() => setDropHover({ kind: 'array', index: i })}
+                onDragLeave={() => {
+                  setDropHover((cur) => {
+                    if (cur?.kind === 'array' && cur.index === i) return null
+                    return cur
+                  })
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const raw = e.dataTransfer.getData('application/jsonve-dnd')
+                  if (!raw) return
+                  const data = JSON.parse(raw) as {
+                    containerId: string
+                    kind: 'object' | 'array'
+                    fromKey?: string
+                    fromIndex?: number
+                  }
+                  if (data.containerId !== JSON.stringify(path)) return
+                  if (data.kind !== 'array') return
+                  if (typeof data.fromIndex !== 'number') return
+                  onUpdate(path, moveArrayItem(value as JsonArray, data.fromIndex, i))
+                  setDropHover(null)
+                }}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  py: 0.5,
+                  userSelect: 'none',
+                  cursor: 'grab',
+                  outline:
+                    dropHover?.kind === 'array' && dropHover.index === i
+                      ? '2px solid rgba(170,59,255,0.7)'
+                      : 'none',
+                  outlineOffset: 1,
+                }}
+              >
+                {/* Linha 1: índice + ações */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}>
+                    <Box
+                      draggable
+                      onDragStart={(e) => {
+                        const containerId = JSON.stringify(path)
+                        e.dataTransfer.setData(
+                          'application/jsonve-dnd',
+                          JSON.stringify({
+                            containerId,
+                            kind: 'array',
+                            fromIndex: i,
+                          })
+                        )
+                        e.dataTransfer.effectAllowed = 'move'
+                      }}
+                      sx={{ display: 'inline-flex', cursor: 'grab', color: 'rgba(0,0,0,0.35)' }}
+                    >
+                      <GripVertical size={14} />
+                    </Box>
+
+                    <Tooltip title={`Deletar [${i}]`} arrow>
+                      <IconButton
+                        size="small"
+                        aria-label={`Remover [${i}]`}
+                        onClick={() => {
+                          onUpdate(path, (() => {
+                            const arr = [...(value as JsonArray)]
+                            arr.splice(i, 1)
+                            return arr
+                          })())
+                        }}
+                        color="error"
+                      >
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+
+                  <Typography variant="body2" sx={{ fontFamily: 'var(--mono)', width: 140 }}>
+                    {`[${i}]`}
+                  </Typography>
+                </Box>
+
+                {/* Linha 2: editor do valor (qualquer nó) */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    p: Array.isArray(item) ? 1 : 0,
+                    border: Array.isArray(item) ? '1px dashed rgba(0,0,0,0.12)' : 'none',
+                    borderRadius: Array.isArray(item) ? 1 : undefined,
+                  }}
+                >
+                  <NodeEditor value={item} path={[...path, i]} onUpdate={onUpdate} hideNodeLabel={true} />
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {!hasChildren && (
+          <Typography variant="body2" sx={{ opacity: 0.6, pl: 0.5, pt: 0.5 }}>
+            Sem subitens
+          </Typography>
+        )}
+      </>
+    )
+
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', mt: 0, gap: 0.5 }}>
+        {Header}
+        {Children}
       </Box>
     )
   }
 
   return (
     <Box sx={{ mt: hideNodeLabel ? 0 : 1 }}>
-      {!isRoot && (
+      {!isRoot && !onlyChildren && (
         <>
           {isCompactRow && ['string', 'number', 'boolean', 'null'].includes(nodeType) ? (
             <Box
@@ -343,11 +725,13 @@ function NodeEditor(props: {
             <Box
               sx={{
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: hideNodeLabel ? 'flex-start' : 'center',
                 gap: 1,
                 mb: hideNodeLabel ? 0 : ['string', 'number', 'boolean', 'null'].includes(nodeType) ? 0 : 0.75,
-                height: hideNodeLabel ? 40 : undefined,
+                height: hideNodeLabel ? 'auto' : undefined,
                 minHeight: hideNodeLabel ? 40 : undefined,
+                flexDirection: hideNodeLabel ? 'column' : 'row',
+                width: hideNodeLabel ? 'fit-content' : 'auto',
               }}
             >
               {!hideNodeLabel ? (
@@ -389,7 +773,9 @@ function NodeEditor(props: {
         Object.entries(value as JsonObject).length > 0 && (
           <Box
             sx={{
-              pl: 1.5,
+              pl: hideNodeLabel ? 0.5 : 1.5,
+              ml: 0,
+              mt: 0,
             }}
           >
             {Object.entries(value as JsonObject).map(([k, v]) => (
@@ -426,8 +812,8 @@ function NodeEditor(props: {
                 }}
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
+                  flexDirection: 'column',
+                  gap: 0.5,
                   py: 0.5,
                   userSelect: 'none',
                   cursor: 'default',
@@ -438,80 +824,94 @@ function NodeEditor(props: {
                   outlineOffset: 1,
                 }}
               >
-                <TextField
-                  size="small"
-                  defaultValue={k}
-                  variant="outlined"
-                  sx={{ width: 160, '& input': { fontFamily: 'var(--mono)' } }}
-                  onBlur={(e) => {
-                    const nextKey = e.target.value.trim()
-                    if (!nextKey || nextKey === k) return
-                    onUpdate(path, (() => {
-                      const obj = { ...(value as JsonObject) }
-                      obj[nextKey] = obj[k]
-                      delete obj[k]
-                      return obj
-                    })())
-                  }}
-                />
+                {/* Linha 1: nome + ações */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}>
+                    <Box
+                      draggable
+                      onDragStart={(e) => {
+                        const containerId = JSON.stringify(path)
+                        e.dataTransfer.setData(
+                          'application/jsonve-dnd',
+                          JSON.stringify({
+                            containerId,
+                            kind: 'object',
+                            fromKey: k,
+                          })
+                        )
+                        e.dataTransfer.effectAllowed = 'move'
+                      }}
+                      sx={{ display: 'inline-flex', cursor: 'grab', color: 'rgba(0,0,0,0.35)' }}
+                    >
+                      <GripVertical size={14} />
+                    </Box>
 
-                <Box
-                  sx={{
-                    flex: 1,
-                    minWidth: 0,
-                    p: (Array.isArray(v) || (typeof v === 'object' && v !== null)) ? 1 : 0,
-                    border:
-                      Array.isArray(v) || (typeof v === 'object' && v !== null)
-                        ? '1px dashed rgba(0,0,0,0.12)'
-                        : 'none',
-                    borderRadius: Array.isArray(v) || (typeof v === 'object' && v !== null) ? 1 : undefined,
-                  }}
-                >
-                  <NodeEditor
-                    value={v}
-                    path={[...path, k]}
-                    onUpdate={onUpdate}
-                    hideNodeLabel={true}
-                  />
-                </Box>
+                    <IconButton
+                      size="small"
+                      aria-label={`Remover ${k}`}
+                      onClick={() => {
+                        onUpdate(path, (() => {
+                          const obj = { ...(value as JsonObject) }
+                          delete obj[k]
+                          return obj
+                        })())
+                      }}
+                      color="error"
+                    >
+                      <Tooltip title={`Deletar ${k}`} arrow>
+                        <Trash2 size={16} />
+                      </Tooltip>
+                    </IconButton>
+                  </Box>
 
-                <IconButton
-                  size="small"
-                  aria-label={`Remover ${k}`}
-                  onClick={() => {
-                    onUpdate(path, (() => {
-                      const obj = { ...(value as JsonObject) }
-                      delete obj[k]
-                      return obj
-                    })())
-                  }}
-                  color="error"
-                >
-                  <Tooltip title={`Deletar ${k}`} arrow>
-                    <Trash2 size={16} />
-                  </Tooltip>
-                </IconButton>
-
-                <Box sx={{ color: 'rgba(0,0,0,0.35)', ml: -0.5 }}>
-                  <Box
-                    draggable
-                    onDragStart={(e) => {
-                      const containerId = JSON.stringify(path)
-                      e.dataTransfer.setData(
-                        'application/jsonve-dnd',
-                        JSON.stringify({
-                          containerId,
-                          kind: 'object',
-                          fromKey: k,
-                        })
-                      )
-                      e.dataTransfer.effectAllowed = 'move'
+                  <TextField
+                    size="small"
+                    defaultValue={k}
+                    variant="outlined"
+                    sx={{ width: 160, '& input': { fontFamily: 'var(--mono)' } }}
+                    onBlur={(e) => {
+                      const nextKey = e.target.value.trim()
+                      if (!nextKey || nextKey === k) return
+                      onUpdate(path, (() => {
+                        const obj = { ...(value as JsonObject) }
+                        obj[nextKey] = obj[k]
+                        delete obj[k]
+                        return obj
+                      })())
                     }}
-                    sx={{ display: 'inline-flex', cursor: 'grab' }}
-                  >
-                    <GripVertical size={14} />
+                  />
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <NodeEditor
+                      value={v}
+                      path={[...path, k]}
+                      onUpdate={onUpdate}
+                      hideNodeLabel={true}
+                      mode="typeValue"
+                    />
                   </Box>
                 </Box>
+
+                {/* Linha 2: só para nós com filhos (object/array) */}
+                {Array.isArray(v) || (typeof v === 'object' && v !== null) ? (
+                  <Box
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      p: 1,
+                      border: '1px dashed rgba(0,0,0,0.12)',
+                      borderRadius: 1,
+                    }}
+                  >
+                    <NodeEditor
+                      value={v}
+                      path={[...path, k]}
+                      onUpdate={onUpdate}
+                      hideNodeLabel={true}
+                      mode="childrenOnly"
+                    />
+                  </Box>
+                ) : null}
               </Box>
             ))}
           </Box>
@@ -521,7 +921,9 @@ function NodeEditor(props: {
         (value as JsonArray).length > 0 && (
           <Box
             sx={{
-              pl: 1.5,
+              pl: hideNodeLabel ? 0.5 : 1.5,
+              ml: 0,
+              mt: 0,
             }}
           >
             {(value as JsonArray).map((item, i) => (
@@ -558,7 +960,7 @@ function NodeEditor(props: {
                 }}
                 sx={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   gap: 1,
                   py: 0.5,
                   userSelect: 'none',
@@ -570,27 +972,8 @@ function NodeEditor(props: {
                   outlineOffset: 1,
                 }}
               >
-                <Typography variant="body2" sx={{ fontFamily: 'var(--mono)', width: 140 }}>
-                  {`[${i}]`}
-                </Typography>
-                <Box
-                  sx={{
-                    flex: 1,
-                    minWidth: 0,
-                    p: Array.isArray(item) ? 1 : 0,
-                    border: Array.isArray(item) ? '1px dashed rgba(0,0,0,0.12)' : 'none',
-                    borderRadius: Array.isArray(item) ? 1 : undefined,
-                  }}
-                >
-                  <NodeEditor
-                    value={item}
-                    path={[...path, i]}
-                    onUpdate={onUpdate}
-                    hideNodeLabel={true}
-                  />
-                </Box>
-
-                <Box sx={{ color: 'rgba(0,0,0,0.35)', ml: -0.5 }}>
+                {/* Ações à esquerda (antes do índice) */}
+                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}>
                   <Box
                     draggable
                     onDragStart={(e) => {
@@ -605,28 +988,64 @@ function NodeEditor(props: {
                       )
                       e.dataTransfer.effectAllowed = 'move'
                     }}
-                    sx={{ display: 'inline-flex', cursor: 'grab' }}
+                    sx={{ display: 'inline-flex', cursor: 'grab', color: 'rgba(0,0,0,0.35)' }}
                   >
                     <GripVertical size={14} />
                   </Box>
+
+                  <Tooltip title={`Deletar [${i}]`} arrow>
+                    <IconButton
+                      size="small"
+                      aria-label={`Remover [${i}]`}
+                      onClick={() => {
+                        onUpdate(path, (() => {
+                          const arr = [...(value as JsonArray)]
+                          arr.splice(i, 1)
+                          return arr
+                        })())
+                      }}
+                      color="error"
+                    >
+                      <Trash2 size={16} />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
 
-                <Tooltip title={`Deletar [${i}]`} arrow>
-                  <IconButton
-                    size="small"
-                    aria-label={`Remover [${i}]`}
-                    onClick={() => {
-                      onUpdate(path, (() => {
-                        const arr = [...(value as JsonArray)]
-                        arr.splice(i, 1)
-                        return arr
-                      })())
+                <Typography variant="body2" sx={{ fontFamily: 'var(--mono)', width: 140 }}>
+                  {`[${i}]`}
+                </Typography>
+
+                  {/* Tipo + value na mesma linha do índice */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <NodeEditor
+                      value={item}
+                      path={[...path, i]}
+                      onUpdate={onUpdate}
+                      hideNodeLabel={true}
+                      mode="typeValue"
+                    />
+                  </Box>
+
+                {/* Linha 2: só para nós com filhos (object/array) */}
+                {Array.isArray(item) || (typeof item === 'object' && item !== null) ? (
+                  <Box
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      p: 1,
+                      border: '1px dashed rgba(0,0,0,0.12)',
+                      borderRadius: 1,
                     }}
-                    color="error"
                   >
-                    <Trash2 size={16} />
-                  </IconButton>
-                </Tooltip>
+                    <NodeEditor
+                      value={item}
+                      path={[...path, i]}
+                      onUpdate={onUpdate}
+                      hideNodeLabel={true}
+                      mode="childrenOnly"
+                    />
+                  </Box>
+                ) : null}
               </Box>
             ))}
           </Box>
