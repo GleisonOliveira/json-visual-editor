@@ -398,10 +398,238 @@ function NodeEditor(props: {
   }
 
   // Filhos apenas: não renderiza cabeçalho (tipo/valor), apenas as seções object/array abaixo.
+  if (onlyChildren) {
+    return (
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+        {nodeType === 'object' &&
+          Object.entries(value as JsonObject).length > 0 && (
+            <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%' }}>
+              {Object.entries(value as JsonObject).map(([k, v]) => (
+                <Box
+                  key={k}
+                  onDragEnter={() => setDropHover({ kind: 'object', key: k })}
+                  onDragLeave={() => {
+                    setDropHover((cur) => {
+                      if (cur?.kind === 'object' && cur.key === k) return null
+                      return cur
+                    })
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const raw = e.dataTransfer.getData('application/jsonve-dnd')
+                    if (!raw) return
+                    const data = JSON.parse(raw) as {
+                      containerId: string
+                      kind: 'object' | 'array'
+                      fromKey?: string
+                      fromIndex?: number
+                    }
+                    if (data.containerId !== JSON.stringify(path)) return
+                    if (data.kind !== 'object') return
+                    if (!data.fromKey) return
+                    onUpdate(path, moveObjectKey(value as JsonObject, data.fromKey, k))
+                    setDropHover(null)
+                  }}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 0.5,
+                    width: '100%',
+                    outline:
+                      dropHover?.kind === 'object' && dropHover.key === k
+                        ? '2px solid rgba(170,59,255,0.7)'
+                        : 'none',
+                    outlineOffset: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '0 0 auto' }}>
+                      <Box
+                        draggable
+                        onDragStart={(e) => {
+                          const containerId = JSON.stringify(path)
+                          e.dataTransfer.setData(
+                            'application/jsonve-dnd',
+                            JSON.stringify({
+                              containerId,
+                              kind: 'object',
+                              fromKey: k,
+                            })
+                          )
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
+                        sx={{ display: 'inline-flex', cursor: 'grab', color: 'rgba(0,0,0,0.35)' }}
+                      >
+                        <GripVertical size={14} />
+                      </Box>
+
+                      <Tooltip title={`Deletar ${k}`} arrow>
+                        <IconButton
+                          size="small"
+                          aria-label={`Remover ${k}`}
+                          onClick={() => {
+                            onUpdate(path, (() => {
+                              const obj = { ...(value as JsonObject) }
+                              delete obj[k]
+                              return obj
+                            })())
+                          }}
+                          color="error"
+                        >
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+
+                    <TextField
+                      size="small"
+                      defaultValue={k}
+                      variant="outlined"
+                      sx={{ width: 160, flex: '0 0 auto', '& input': { fontFamily: 'var(--mono)' } }}
+                      onBlur={(e) => {
+                        const nextKey = e.target.value.trim()
+                        if (!nextKey || nextKey === k) return
+                        onUpdate(path, (() => {
+                          const obj = { ...(value as JsonObject) }
+                          obj[nextKey] = obj[k]
+                          delete obj[k]
+                          return obj
+                        })())
+                      }}
+                    />
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '1 1 auto', minWidth: 0 }}>
+                      <NodeEditor value={v} path={[...path, k]} onUpdate={onUpdate} hideNodeLabel={true} mode="typeValue" />
+                    </Box>
+                  </Box>
+                  {Array.isArray(v) || (typeof v === 'object' && v !== null) ? (
+                    <Box sx={{ width: '100%', p: 1, border: '1px dashed rgba(0,0,0,0.12)', borderRadius: 1 }}>
+                      <NodeEditor value={v} path={[...path, k]} onUpdate={onUpdate} hideNodeLabel={true} mode="childrenOnly" />
+                    </Box>
+                  ) : null}
+                </Box>
+              ))}
+            </Box>
+          )}
+
+        {nodeType === 'array' && (value as JsonArray).length > 0 && (
+          <Box sx={{ pl: 0.5, ml: -0.25, mt: 0.5, width: '100%' }}>
+            {(value as JsonArray).map((item, i) => (
+              <Box
+                key={i}
+                onDragEnter={() => setDropHover({ kind: 'array', index: i })}
+                onDragLeave={() => {
+                  setDropHover((cur) => {
+                    if (cur?.kind === 'array' && cur.index === i) return null
+                    return cur
+                  })
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const raw = e.dataTransfer.getData('application/jsonve-dnd')
+                  if (!raw) return
+                  const data = JSON.parse(raw) as {
+                    containerId: string
+                    kind: 'object' | 'array'
+                    fromKey?: string
+                    fromIndex?: number
+                  }
+                  if (data.containerId !== JSON.stringify(path)) return
+                  if (data.kind !== 'array') return
+                  if (typeof data.fromIndex !== 'number') return
+                  onUpdate(path, moveArrayItem(value as JsonArray, data.fromIndex, i))
+                  setDropHover(null)
+                }}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  width: '100%',
+                  outline:
+                    dropHover?.kind === 'array' && dropHover.index === i
+                      ? '2px solid rgba(170,59,255,0.7)'
+                      : 'none',
+                  outlineOffset: 1,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '0 0 auto' }}>
+                    <Box
+                      draggable
+                      onDragStart={(e) => {
+                        const containerId = JSON.stringify(path)
+                        e.dataTransfer.setData(
+                          'application/jsonve-dnd',
+                          JSON.stringify({
+                            containerId,
+                            kind: 'array',
+                            fromIndex: i,
+                          })
+                        )
+                        e.dataTransfer.effectAllowed = 'move'
+                      }}
+                      sx={{ display: 'inline-flex', cursor: 'grab', color: 'rgba(0,0,0,0.35)' }}
+                    >
+                      <GripVertical size={14} />
+                    </Box>
+
+                    <Tooltip title={`Deletar [${i}]`} arrow>
+                      <IconButton
+                        size="small"
+                        aria-label={`Remover [${i}]`}
+                        onClick={() => {
+                          onUpdate(path, (() => {
+                            const arr = [...(value as JsonArray)]
+                            arr.splice(i, 1)
+                            return arr
+                          })())
+                        }}
+                        color="error"
+                      >
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+
+                  <Typography variant="body2" sx={{ fontFamily: 'var(--mono)', width: 140, flex: '0 0 auto' }}>
+                    {`[${i}]`}
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '1 1 auto', minWidth: 0 }}>
+                    <NodeEditor value={item} path={[...path, i]} onUpdate={onUpdate} hideNodeLabel={true} mode="typeValue" />
+                  </Box>
+                </Box>
+                {Array.isArray(item) || (typeof item === 'object' && item !== null) ? (
+                  <Box sx={{ width: '100%', p: 1, border: '1px dashed rgba(0,0,0,0.12)', borderRadius: 1 }}>
+                    <NodeEditor value={item} path={[...path, i]} onUpdate={onUpdate} hideNodeLabel={true} mode="childrenOnly" />
+                  </Box>
+                ) : null}
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {!(nodeType === 'object' && Object.entries(value as JsonObject).length > 0) &&
+          !(nodeType === 'array' && (value as JsonArray).length > 0) && (
+            <Typography variant="body2" sx={{ opacity: 0.6, pl: 0.5, pt: 0.5 }}>
+              Sem subitens
+            </Typography>
+          )}
+      </Box>
+    )
+  }
 
   // Quando em modo compacto (hideNodeLabel=true) e o nó tem filhos (object/array),
   // separe "Tipo" (linha 1) do bloco dos subitens (linha 2) para não ficarem no mesmo container.
-  if (hideNodeLabel && !isRoot && (nodeType === 'object' || nodeType === 'array') && mode !== 'childrenOnly') {
+  if (hideNodeLabel && !isRoot && (nodeType === 'object' || nodeType === 'array')) {
     const Header = (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0 }}>
         <FormControl size="small" fullWidth sx={{ minWidth: 170 }}>
@@ -472,23 +700,25 @@ function NodeEditor(props: {
                     if (!data.fromKey) return
                     onUpdate(path, moveObjectKey(value as JsonObject, data.fromKey, k))
                     setDropHover(null)
-                  }}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 1,
-                    py: 0.5,
-                    userSelect: 'none',
-                    cursor: 'default',
-                    outline:
-                      dropHover?.kind === 'object' && dropHover.key === k
-                        ? '2px solid rgba(170,59,255,0.7)'
-                        : 'none',
-                    outlineOffset: 1,
-                  }}
-                >
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flex: 1, minWidth: 0 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                }}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 0.5,
+                  py: 0.5,
+                  width: '100%',
+                  userSelect: 'none',
+                  cursor: 'default',
+                  outline:
+                    dropHover?.kind === 'object' && dropHover.key === k
+                      ? '2px solid rgba(170,59,255,0.7)'
+                      : 'none',
+                  outlineOffset: 1,
+                }}
+              >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flex: '0 0 auto' }}>
                       <Box
                         draggable
                         onDragStart={(e) => {
@@ -524,28 +754,28 @@ function NodeEditor(props: {
                           <Trash2 size={16} />
                         </Tooltip>
                       </IconButton>
-
-                      <TextField
-                        size="small"
-                        defaultValue={k}
-                        variant="outlined"
-                        sx={{ width: 160, '& input': { fontFamily: 'var(--mono)' } }}
-                        onBlur={(e) => {
-                          const nextKey = e.target.value.trim()
-                          if (!nextKey || nextKey === k) return
-                          onUpdate(path, (() => {
-                            const obj = { ...(value as JsonObject) }
-                            obj[nextKey] = obj[k]
-                            delete obj[k]
-                            return obj
-                          })())
-                        }}
-                      />
                     </Box>
+
+                    <TextField
+                      size="small"
+                      defaultValue={k}
+                      variant="outlined"
+                      sx={{ width: 160, flex: '0 0 auto', '& input': { fontFamily: 'var(--mono)' } }}
+                      onBlur={(e) => {
+                        const nextKey = e.target.value.trim()
+                        if (!nextKey || nextKey === k) return
+                        onUpdate(path, (() => {
+                          const obj = { ...(value as JsonObject) }
+                          obj[nextKey] = obj[k]
+                          delete obj[k]
+                          return obj
+                        })())
+                      }}
+                    />
 
                     <Box
                       sx={{
-                        flex: 1,
+                        flex: '1 1 auto',
                         minWidth: 0,
                         p: Array.isArray(v) || (typeof v === 'object' && v !== null) ? 1 : 0,
                         border:
@@ -599,8 +829,10 @@ function NodeEditor(props: {
                 sx={{
                   display: 'flex',
                   flexDirection: 'column',
+                  alignItems: 'stretch',
                   gap: 0.5,
                   py: 0.5,
+                  width: '100%',
                   userSelect: 'none',
                   cursor: 'grab',
                   outline:
@@ -610,9 +842,8 @@ function NodeEditor(props: {
                   outlineOffset: 1,
                 }}
               >
-                {/* Linha 1: índice + ações */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', flexWrap: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center', flex: '0 0 auto' }}>
                     <Box
                       draggable
                       onDragStart={(e) => {
@@ -650,15 +881,24 @@ function NodeEditor(props: {
                     </Tooltip>
                   </Box>
 
-                  <Typography variant="body2" sx={{ fontFamily: 'var(--mono)', width: 140 }}>
+                  <Typography variant="body2" sx={{ fontFamily: 'var(--mono)', width: 140, flex: '0 0 auto' }}>
                     {`[${i}]`}
                   </Typography>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '1 1 auto', minWidth: 0 }}>
+                    <NodeEditor
+                      value={item}
+                      path={[...path, i]}
+                      onUpdate={onUpdate}
+                      hideNodeLabel={true}
+                      mode="typeValue"
+                    />
+                  </Box>
                 </Box>
 
-                {/* Linha 2: editor do valor (qualquer nó) */}
                 <Box
                   sx={{
-                    flex: 1,
+                    width: '100%',
                     minWidth: 0,
                     p: Array.isArray(item) ? 1 : 0,
                     border: Array.isArray(item) ? '1px dashed rgba(0,0,0,0.12)' : 'none',
