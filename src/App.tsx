@@ -220,13 +220,6 @@ function ObjectItem(props: {
 
   return (
     <Box
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'object', fromKey: k }))
-        e.dataTransfer.effectAllowed = 'move'
-        setTimeout(() => setIsDragging(true), 0)
-      }}
-      onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
       onDragLeave={(e) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
@@ -245,15 +238,23 @@ function ObjectItem(props: {
       sx={{
         mb: 1.5,
         opacity: isDragging ? 0.4 : 1,
-        outline: isDragging ? '2px solid' : isOver ? '2px solid' : 'none',
-        outlineColor: isDragging ? 'warning.main' : 'primary.main',
+        outline: isOver ? '2px solid' : 'none',
+        outlineColor: 'primary.main',
         borderRadius: 1,
         transition: 'opacity 0.15s, outline 0.1s',
-        cursor: 'grab',
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+        <Box
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'object', fromKey: k }))
+            e.dataTransfer.effectAllowed = 'move'
+            setTimeout(() => setIsDragging(true), 0)
+          }}
+          onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
+          sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', cursor: 'grab' }}
+        >
           <GripVertical size={14} />
         </Box>
         <Tooltip title={`Deletar ${k}`} arrow>
@@ -314,13 +315,6 @@ function ArrayItem(props: {
 
   return (
     <Box
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'array', fromIndex: i }))
-        e.dataTransfer.effectAllowed = 'move'
-        setTimeout(() => setIsDragging(true), 0)
-      }}
-      onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
       onDragLeave={(e) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
@@ -339,15 +333,23 @@ function ArrayItem(props: {
       sx={{
         mb: 1.5,
         opacity: isDragging ? 0.4 : 1,
-        outline: isDragging ? '2px solid' : isOver ? '2px solid' : 'none',
-        outlineColor: isDragging ? 'warning.main' : 'primary.main',
+        outline: isOver ? '2px solid' : 'none',
+        outlineColor: 'primary.main',
         borderRadius: 1,
         transition: 'opacity 0.15s, outline 0.1s',
-        cursor: 'grab',
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+        <Box
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'array', fromIndex: i }))
+            e.dataTransfer.effectAllowed = 'move'
+            setTimeout(() => setIsDragging(true), 0)
+          }}
+          onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
+          sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', cursor: 'grab' }}
+        >
           <GripVertical size={14} />
         </Box>
         <Tooltip title={`Deletar [${i}]`} arrow>
