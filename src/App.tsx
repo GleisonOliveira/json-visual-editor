@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Button,
   Divider,
@@ -200,13 +200,186 @@ function NumberField({ value, onChange }: { value: number; onChange: (n: number)
   )
 }
 
+function ObjectItem(props: {
+  objKey: string
+  value: JsonValue
+  parentPath: Array<string | number>
+  obj: JsonObject
+  onUpdate: (path: Array<string | number>, next: any) => void
+  collapsed: Set<string>
+  toggleCollapse: (key: string) => void
+  isComplexValue: (v: JsonValue) => boolean
+  renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
+  moveObjectKey: (obj: JsonObject, from: string, to: string) => JsonObject
+}) {
+  const { objKey: k, value: v, parentPath, obj, onUpdate, collapsed, toggleCollapse, isComplexValue, renderChildren, moveObjectKey } = props
+  const [isOver, setIsOver] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const depth = React.useRef(0)
+  const collapseKey = JSON.stringify([...parentPath, k])
+
+  return (
+    <Box
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'object', fromKey: k }))
+        e.dataTransfer.effectAllowed = 'move'
+        setTimeout(() => setIsDragging(true), 0)
+      }}
+      onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
+      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
+      onDragLeave={(e) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
+      onDrop={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        depth.current = 0
+        setIsOver(false)
+        const raw = e.dataTransfer.getData('application/jsonve-dnd')
+        if (!raw) return
+        const data = JSON.parse(raw) as { containerId: string; kind: 'object' | 'array'; fromKey?: string; fromIndex?: number }
+        if (data.containerId !== JSON.stringify(parentPath)) return
+        if (data.kind !== 'object' || !data.fromKey) return
+        onUpdate(parentPath, moveObjectKey(obj, data.fromKey, k))
+      }}
+      sx={{
+        mb: 1.5,
+        opacity: isDragging ? 0.4 : 1,
+        outline: isDragging ? '2px solid' : isOver ? '2px solid' : 'none',
+        outlineColor: isDragging ? 'warning.main' : 'primary.main',
+        borderRadius: 1,
+        transition: 'opacity 0.15s, outline 0.1s',
+        cursor: 'grab',
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+          <GripVertical size={14} />
+        </Box>
+        <Tooltip title={`Deletar ${k}`} arrow>
+          <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); const o = { ...obj }; delete o[k]; onUpdate(parentPath, o) }}>
+            <Trash2 size={16} />
+          </IconButton>
+        </Tooltip>
+        <TextField
+          size="small"
+          defaultValue={k}
+          variant="outlined"
+          sx={{ width: 120 }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onBlur={(e) => {
+            const nextKey = e.target.value.trim()
+            if (!nextKey || nextKey === k) return
+            const o = { ...obj }
+            o[nextKey] = o[k]
+            delete o[k]
+            onUpdate(parentPath, o)
+          }}
+        />
+        <NodeEditor value={v} path={[...parentPath, k]} onUpdate={onUpdate} />
+        {isComplexValue(v) && (
+          <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
+              {collapsed.has(collapseKey) ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+      {isComplexValue(v) && !collapsed.has(collapseKey) && (
+        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5 }}>
+          {renderChildren(v, [...parentPath, k])}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
+function ArrayItem(props: {
+  index: number
+  item: JsonValue
+  parentPath: Array<string | number>
+  arr: JsonArray
+  onUpdate: (path: Array<string | number>, next: any) => void
+  collapsed: Set<string>
+  toggleCollapse: (key: string) => void
+  isComplexValue: (v: JsonValue) => boolean
+  renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
+  moveArrayItem: (arr: JsonArray, from: number, to: number) => JsonArray
+}) {
+  const { index: i, item, parentPath, arr, onUpdate, collapsed, toggleCollapse, isComplexValue, renderChildren, moveArrayItem } = props
+  const [isOver, setIsOver] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const depth = React.useRef(0)
+  const collapseKey = JSON.stringify([...parentPath, i])
+
+  return (
+    <Box
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'array', fromIndex: i }))
+        e.dataTransfer.effectAllowed = 'move'
+        setTimeout(() => setIsDragging(true), 0)
+      }}
+      onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
+      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
+      onDragLeave={(e) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
+      onDrop={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        depth.current = 0
+        setIsOver(false)
+        const raw = e.dataTransfer.getData('application/jsonve-dnd')
+        if (!raw) return
+        const data = JSON.parse(raw) as { containerId: string; kind: 'object' | 'array'; fromKey?: string; fromIndex?: number }
+        if (data.containerId !== JSON.stringify(parentPath)) return
+        if (data.kind !== 'array' || typeof data.fromIndex !== 'number') return
+        onUpdate(parentPath, moveArrayItem(arr, data.fromIndex, i))
+      }}
+      sx={{
+        mb: 1.5,
+        opacity: isDragging ? 0.4 : 1,
+        outline: isDragging ? '2px solid' : isOver ? '2px solid' : 'none',
+        outlineColor: isDragging ? 'warning.main' : 'primary.main',
+        borderRadius: 1,
+        transition: 'opacity 0.15s, outline 0.1s',
+        cursor: 'grab',
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+          <GripVertical size={14} />
+        </Box>
+        <Tooltip title={`Deletar [${i}]`} arrow>
+          <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); const a = [...arr]; a.splice(i, 1); onUpdate(parentPath, a) }}>
+            <Trash2 size={16} />
+          </IconButton>
+        </Tooltip>
+        <Typography variant="body2" sx={{ minWidth: 28, fontFamily: 'monospace' }}>[{i}]</Typography>
+        <NodeEditor value={item} path={[...parentPath, i]} onUpdate={onUpdate} />
+        {isComplexValue(item) && (
+          <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
+              {collapsed.has(collapseKey) ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
+      {isComplexValue(item) && !collapsed.has(collapseKey) && (
+        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5 }}>
+          {renderChildren(item, [...parentPath, i])}
+        </Box>
+      )}
+    </Box>
+  )
+}
+
 function NodeEditor(props: {
   value: JsonValue
   path: Array<string | number>
   onUpdate: (path: Array<string | number>, next: any) => void
 }) {
   const { value, path, onUpdate } = props
-  const [, setDropHover] = useState<null | { kind: 'object'; key: string } | { kind: 'array'; index: number }>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => {
@@ -295,184 +468,47 @@ function NodeEditor(props: {
   const isComplexValue = (v: JsonValue) =>
     Array.isArray(v) || (typeof v === 'object' && v !== null)
 
-  const renderObjectItems = (obj: JsonObject, parentPath: Array<string | number>) =>
-    Object.entries(obj).map(([k, v]) => (
-      <Box
-        key={k}
-        onDragEnter={() => setDropHover({ kind: 'object', key: k })}
-        onDragLeave={() =>
-          setDropHover((cur) => (cur?.kind === 'object' && cur.key === k ? null : cur))
-        }
-        onDragOver={(e) => {
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'move'
-        }}
-        onDrop={(e) => {
-          e.preventDefault()
-          const raw = e.dataTransfer.getData('application/jsonve-dnd')
-          if (!raw) return
-          const data = JSON.parse(raw) as { containerId: string; kind: 'object' | 'array'; fromKey?: string; fromIndex?: number }
-          if (data.containerId !== JSON.stringify(parentPath)) return
-          if (data.kind !== 'object' || !data.fromKey) return
-          onUpdate(parentPath, moveObjectKey(obj, data.fromKey, k))
-          setDropHover(null)
-        }}
-        sx={{ mb: 1.5 }}
-      >
-        {/* Linha principal */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
-          <Box
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData(
-                'application/jsonve-dnd',
-                JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'object', fromKey: k })
-              )
-              e.dataTransfer.effectAllowed = 'move'
-            }}
-            sx={{ cursor: 'grab', display: 'flex', alignItems: 'center', color: 'text.secondary' }}
-          >
-            <GripVertical size={14} />
-          </Box>
-          <Tooltip title={`Deletar ${k}`} arrow>
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => {
-                const obj2 = { ...obj }
-                delete obj2[k]
-                onUpdate(parentPath, obj2)
-              }}
-            >
-              <Trash2 size={16} />
-            </IconButton>
-          </Tooltip>
-          <TextField
-            size="small"
-            defaultValue={k}
-            variant="outlined"
-            sx={{ width: 120 }}
-            onBlur={(e) => {
-              const nextKey = e.target.value.trim()
-              if (!nextKey || nextKey === k) return
-              const obj2 = { ...obj }
-              obj2[nextKey] = obj2[k]
-              delete obj2[k]
-              onUpdate(parentPath, obj2)
-            }}
-          />
-          <NodeEditor value={v} path={[...parentPath, k]} onUpdate={onUpdate} />
-          {isComplexValue(v) && (
-            <Tooltip title={collapsed.has(JSON.stringify([...parentPath, k])) ? 'Expandir' : 'Recolher'} arrow>
-              <IconButton
-                size="small"
-                onClick={() => toggleCollapse(JSON.stringify([...parentPath, k]))}
-                sx={{ ml: 'auto' }}
-              >
-                {collapsed.has(JSON.stringify([...parentPath, k]))
-                  ? <ChevronRight size={16} />
-                  : <ChevronDown size={16} />}
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-        {/* Filhos indentados */}
-        {isComplexValue(v) && !collapsed.has(JSON.stringify([...parentPath, k])) && (
-          <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5 }}>
-            {renderChildren(v, [...parentPath, k])}
-          </Box>
-        )}
-      </Box>
-    ))
-
-  const renderArrayItems = (arr: JsonArray, parentPath: Array<string | number>) =>
-    arr.map((item, i) => (
-      <Box
-        key={i}
-        onDragEnter={() => setDropHover({ kind: 'array', index: i })}
-        onDragLeave={() =>
-          setDropHover((cur) => (cur?.kind === 'array' && cur.index === i ? null : cur))
-        }
-        onDragOver={(e) => {
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'move'
-        }}
-        onDrop={(e) => {
-          e.preventDefault()
-          const raw = e.dataTransfer.getData('application/jsonve-dnd')
-          if (!raw) return
-          const data = JSON.parse(raw) as { containerId: string; kind: 'object' | 'array'; fromKey?: string; fromIndex?: number }
-          if (data.containerId !== JSON.stringify(parentPath)) return
-          if (data.kind !== 'array' || typeof data.fromIndex !== 'number') return
-          onUpdate(parentPath, moveArrayItem(arr, data.fromIndex, i))
-          setDropHover(null)
-        }}
-        sx={{ mb: 1.5 }}
-      >
-        {/* Linha principal */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
-          <Box
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData(
-                'application/jsonve-dnd',
-                JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'array', fromIndex: i })
-              )
-              e.dataTransfer.effectAllowed = 'move'
-            }}
-            sx={{ cursor: 'grab', display: 'flex', alignItems: 'center', color: 'text.secondary' }}
-          >
-            <GripVertical size={14} />
-          </Box>
-          <Tooltip title={`Deletar [${i}]`} arrow>
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => {
-                const arr2 = [...arr]
-                arr2.splice(i, 1)
-                onUpdate(parentPath, arr2)
-              }}
-            >
-              <Trash2 size={16} />
-            </IconButton>
-          </Tooltip>
-          <Typography variant="body2" sx={{ minWidth: 28, fontFamily: 'monospace' }}>
-            [{i}]
-          </Typography>
-          <NodeEditor value={item} path={[...parentPath, i]} onUpdate={onUpdate} />
-          {isComplexValue(item) && (
-            <Tooltip title={collapsed.has(JSON.stringify([...parentPath, i])) ? 'Expandir' : 'Recolher'} arrow>
-              <IconButton
-                size="small"
-                onClick={() => toggleCollapse(JSON.stringify([...parentPath, i]))}
-                sx={{ ml: 'auto' }}
-              >
-                {collapsed.has(JSON.stringify([...parentPath, i]))
-                  ? <ChevronRight size={16} />
-                  : <ChevronDown size={16} />}
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-        {/* Filhos indentados */}
-        {isComplexValue(item) && !collapsed.has(JSON.stringify([...parentPath, i])) && (
-          <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5 }}>
-            {renderChildren(item, [...parentPath, i])}
-          </Box>
-        )}
-      </Box>
-    ))
-
-  const renderChildren = (v: JsonValue, parentPath: Array<string | number>) => {
+  const renderChildren = (v: JsonValue, parentPath: Array<string | number>): React.ReactNode => {
     if (Array.isArray(v)) {
       if (v.length === 0) return <Typography variant="body2" color="text.secondary">Sem itens</Typography>
-      return <>{renderArrayItems(v, parentPath)}</>
+      return <>
+        {v.map((item, i) => (
+          <ArrayItem
+            key={i}
+            index={i}
+            item={item}
+            parentPath={parentPath}
+            arr={v}
+            onUpdate={onUpdate}
+            collapsed={collapsed}
+            toggleCollapse={toggleCollapse}
+            isComplexValue={isComplexValue}
+            renderChildren={renderChildren}
+            moveArrayItem={moveArrayItem}
+          />
+        ))}
+      </>
     }
     if (typeof v === 'object' && v !== null) {
       const entries = Object.entries(v as JsonObject)
       if (entries.length === 0) return <Typography variant="body2" color="text.secondary">Sem campos</Typography>
-      return <>{renderObjectItems(v as JsonObject, parentPath)}</>
+      return <>
+        {entries.map(([k, child]) => (
+          <ObjectItem
+            key={k}
+            objKey={k}
+            value={child}
+            parentPath={parentPath}
+            obj={v as JsonObject}
+            onUpdate={onUpdate}
+            collapsed={collapsed}
+            toggleCollapse={toggleCollapse}
+            isComplexValue={isComplexValue}
+            renderChildren={renderChildren}
+            moveObjectKey={moveObjectKey}
+          />
+        ))}
+      </>
     }
     return null
   }
