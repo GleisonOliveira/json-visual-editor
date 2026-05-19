@@ -19,7 +19,7 @@ import {
   Typography,
   Box,
 } from '@mui/material'
-import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
+import { Trash2, GripVertical, ChevronDown, ChevronRight, Type, Hash, ToggleLeft, Braces, List, Ban, Pencil, X, CheckCheck } from 'lucide-react'
 import { z } from 'zod'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
@@ -39,7 +39,14 @@ type NodeTarget = {
 
 type DndPayload = {
   fromPath: Array<string | number>
-  fromKey?: string  // original object key, preserved when moving into another object
+  fromKey?: string
+} | {
+  fromPalette: true
+  paletteType: string
+}
+
+function isPalettePayload(p: DndPayload): p is { fromPalette: true; paletteType: string } {
+  return 'fromPalette' in p && p.fromPalette === true
 }
 
 function getAtPath(root: JsonValue, path: Array<string | number>): JsonValue {
@@ -109,6 +116,7 @@ function moveNode(
   toParentPath: Array<string | number>,
   toKey: string | number | null
 ): JsonValue {
+  if (isPalettePayload(payload)) return root
   const { fromPath, fromKey } = payload
   // Prevent dropping into own subtree
   if (isAncestorOrEqual(fromPath, toParentPath)) return root
@@ -137,6 +145,16 @@ function moveNode(
   }
   const afterRemove = removeAtPath(root, fromPath)
   return insertAtPath(afterRemove, toParentPath, adjustedKey, value, fromKey, movingDown)
+}
+
+function insertFromPalette(
+  root: JsonValue,
+  paletteType: string,
+  toParentPath: Array<string | number>,
+  toKey: string | number | null
+): JsonValue {
+  const value = buildDefaultValue({ type: paletteType, name: 'newField', valueText: '', valueNumber: 0, valueBoolean: false, isNull: paletteType === 'null' })
+  return insertAtPath(root, toParentPath, toKey, value, toKey === null ? 'newField' : undefined)
 }
 
 const isObject = (v: unknown): v is JsonObject =>
@@ -255,11 +273,16 @@ function updatePrimitive(
 
 function NumberField({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [text, setText] = useState(String(value ?? 0))
+  const prevValueRef = React.useRef(value)
 
-  // Sincroniza quando o valor externo muda (ex: troca de tipo)
-  const valueStr = String(value ?? 0)
-  if (text !== valueStr && Number(text) !== value) {
-    setText(valueStr)
+  // Sync only when external value changes (e.g. type switch), not during typing
+  if (prevValueRef.current !== value) {
+    prevValueRef.current = value
+    const cur = Number(text)
+    const typing = text.endsWith('.') || text.endsWith('-')
+    if (!typing && cur !== value) {
+      setText(String(value ?? 0))
+    }
   }
 
   return (
@@ -274,8 +297,10 @@ function NumberField({ value, onChange }: { value: number; onChange: (n: number)
         const n = Number(e.target.value)
         if (Number.isFinite(n)) {
           onChange(n)
+          setText(String(n))
         } else {
-          setText(String(value ?? 0))
+          onChange(0)
+          setText('0')
         }
       }}
     />
@@ -317,10 +342,11 @@ function useDndItem(path: Array<string | number>, fromKey?: string) {
 function ContainerDropZone(props: {
   parentPath: Array<string | number>
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
+  onInsert: (paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => void
   parentKind: 'object' | 'array'
   locked?: boolean
 }) {
-  const { parentPath, onMove, locked } = props
+  const { parentPath, onMove, onInsert, locked } = props
   const [isOver, setIsOver] = useState(false)
   const depth = React.useRef(0)
   return (
@@ -335,6 +361,7 @@ function ContainerDropZone(props: {
         const raw = e.dataTransfer.getData('application/jsonve-dnd')
         if (!raw) return
         const payload = JSON.parse(raw) as DndPayload
+        if (isPalettePayload(payload)) { onInsert(payload.paletteType, parentPath, null); return }
         if (isAncestorOrEqual(payload.fromPath, parentPath)) return
         onMove(payload, parentPath, null)
       }}
@@ -365,13 +392,14 @@ function ObjectItem(props: {
   obj: JsonObject
   onUpdate: (path: Array<string | number>, next: any) => void
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
+  onInsert: (paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => void
   collapsed: Set<string>
   toggleCollapse: (key: string) => void
   isComplexValue: (v: JsonValue) => boolean
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
 }) {
-  const { objKey: k, value: v, parentPath, obj, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren, locked } = props
+  const { objKey: k, value: v, parentPath, obj, onUpdate, onMove, onInsert, collapsed, toggleCollapse, isComplexValue, renderChildren, locked } = props
   const itemPath = [...parentPath, k]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath, k)
   const collapseKey = JSON.stringify(itemPath)
@@ -379,6 +407,7 @@ function ObjectItem(props: {
   return (
     <Box
       {...(!locked ? dropZoneProps((payload) => {
+        if (isPalettePayload(payload)) { onInsert(payload.paletteType, parentPath, k); return }
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         onMove(payload, parentPath, k)
       }) : {})}
@@ -422,7 +451,7 @@ function ObjectItem(props: {
             onUpdate(parentPath, o)
           }}
         />
-        <NodeEditor value={v} path={itemPath} onUpdate={onUpdate} onMove={onMove} locked={locked} />
+        <NodeEditor value={v} path={itemPath} onUpdate={onUpdate} onMove={onMove} onInsert={onInsert} locked={locked} />
         {isComplexValue(v) && (
           <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
@@ -434,7 +463,7 @@ function ObjectItem(props: {
       {isComplexValue(v) && !collapsed.has(collapseKey) && (
         <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
           {renderChildren(v, itemPath)}
-          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(v) ? 'array' : 'object'} locked={locked} />
+          <ContainerDropZone parentPath={itemPath} onMove={onMove} onInsert={onInsert} parentKind={isArray(v) ? 'array' : 'object'} locked={locked} />
         </Box>
       )}
     </Box>
@@ -448,13 +477,14 @@ function ArrayItem(props: {
   arr: JsonArray
   onUpdate: (path: Array<string | number>, next: any) => void
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
+  onInsert: (paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => void
   collapsed: Set<string>
   toggleCollapse: (key: string) => void
   isComplexValue: (v: JsonValue) => boolean
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
 }) {
-  const { index: i, item, parentPath, arr, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren, locked } = props
+  const { index: i, item, parentPath, arr, onUpdate, onMove, onInsert, collapsed, toggleCollapse, isComplexValue, renderChildren, locked } = props
   const itemPath = [...parentPath, i]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath)
   const collapseKey = JSON.stringify(itemPath)
@@ -462,6 +492,7 @@ function ArrayItem(props: {
   return (
     <Box
       {...(!locked ? dropZoneProps((payload) => {
+        if (isPalettePayload(payload)) { onInsert(payload.paletteType, parentPath, i); return }
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         onMove(payload, parentPath, i)
       }) : {})}
@@ -489,7 +520,7 @@ function ArrayItem(props: {
           </span>
         </Tooltip>
         <Typography variant="body2" sx={{ minWidth: 28, fontFamily: 'monospace' }}>[{i}]</Typography>
-        <NodeEditor value={item} path={itemPath} onUpdate={onUpdate} onMove={onMove} locked={locked} />
+        <NodeEditor value={item} path={itemPath} onUpdate={onUpdate} onMove={onMove} onInsert={onInsert} locked={locked} />
         {isComplexValue(item) && (
           <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
@@ -501,7 +532,7 @@ function ArrayItem(props: {
       {isComplexValue(item) && !collapsed.has(collapseKey) && (
         <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
           {renderChildren(item, itemPath)}
-          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(item) ? 'array' : 'object'} locked={locked} />
+          <ContainerDropZone parentPath={itemPath} onMove={onMove} onInsert={onInsert} parentKind={isArray(item) ? 'array' : 'object'} locked={locked} />
         </Box>
       )}
     </Box>
@@ -513,9 +544,10 @@ function NodeEditor(props: {
   path: Array<string | number>
   onUpdate: (path: Array<string | number>, next: any) => void
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
+  onInsert: (paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => void
   locked: boolean
 }) {
-  const { value, path, onUpdate, onMove, locked } = props
+  const { value, path, onUpdate, onMove, onInsert, locked } = props
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => {
@@ -618,6 +650,7 @@ function NodeEditor(props: {
             arr={v}
             onUpdate={onUpdate}
             onMove={onMove}
+            onInsert={onInsert}
             collapsed={collapsed}
             toggleCollapse={toggleCollapse}
             isComplexValue={isComplexValue}
@@ -640,6 +673,7 @@ function NodeEditor(props: {
             obj={v as JsonObject}
             onUpdate={onUpdate}
             onMove={onMove}
+            onInsert={onInsert}
             collapsed={collapsed}
             toggleCollapse={toggleCollapse}
             isComplexValue={isComplexValue}
@@ -706,7 +740,7 @@ function NodeEditor(props: {
           </Box>
         )}
         {renderChildren(value, path)}
-        <ContainerDropZone parentPath={path} onMove={onMove} parentKind={isArray(value) ? 'array' : 'object'} locked={locked} />
+        <ContainerDropZone parentPath={path} onMove={onMove} onInsert={onInsert} parentKind={isArray(value) ? 'array' : 'object'} locked={locked} />
       </Box>
     )
   }
@@ -855,7 +889,7 @@ export default function App() {
             <CardHeader title="Modelo (visual)" subheader="Edição total + formulário" />
             <CardContent>
               <Grid container spacing={2} sx={{ flexDirection: 'column' }}>
-                <Grid size={12}>
+                <Grid size={12} sx={{ display: { xs: 'block', md: 'none' } }}>
                   <Typography variant="subtitle2">
                     Adicionar dados ao JSON
                   </Typography>
@@ -1004,7 +1038,7 @@ export default function App() {
 
                     <Grid container spacing={1.25} sx={{ justifyContent: 'flex-end' }}>
                       <Grid size={{ xs: 12, md: 'auto' }}>
-                        <Button variant="contained" onClick={onAdd} disabled={!selectedTarget || editingJson}>
+                        <Button variant="outlined" onClick={onAdd} disabled={!selectedTarget || editingJson}>
                           Adicionar
                         </Button>
                       </Grid>
@@ -1014,6 +1048,33 @@ export default function App() {
 
                 </Grid>
 
+                <Grid size={12} sx={{ display: { xs: 'none', md: 'block' } }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                    {([
+                      { type: 'string', icon: <Type size={14} /> },
+                      { type: 'number', icon: <Hash size={14} /> },
+                      { type: 'boolean', icon: <ToggleLeft size={14} /> },
+                      { type: 'object', icon: <Braces size={14} /> },
+                      { type: 'array', icon: <List size={14} /> },
+                      { type: 'null', icon: <Ban size={14} /> },
+                    ]).map(({ type, icon }) => (
+                      <Button
+                        key={type}
+                        size="small"
+                        variant="outlined"
+                        startIcon={icon}
+                        draggable={!editingJson}
+                        disabled={editingJson}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ fromPalette: true, paletteType: type }))
+                        }}
+                        sx={{ cursor: editingJson ? 'default' : 'grab' }}
+                      >
+                        {type}
+                      </Button>
+                    ))}
+                  </Box>
+                </Grid>
                 <Grid size={12}>
                   <NodeEditor
                     value={parsed}
@@ -1024,6 +1085,9 @@ export default function App() {
                     }
                     onMove={(payload, toParentPath, toKey) =>
                       setJsonValue((prev: JsonValue) => moveNode(prev, payload, toParentPath, toKey))
+                    }
+                    onInsert={(paletteType, toParentPath, toKey) =>
+                      setJsonValue((prev: JsonValue) => insertFromPalette(prev, paletteType, toParentPath, toKey))
                     }
                   />
                 </Grid>
@@ -1037,46 +1101,52 @@ export default function App() {
             <CardHeader
               title="JSON Final"
               subheader={editingJson ? 'Modo edição manual — valide ou cancele para continuar' : 'Somente leitura'}
-              action={
-                editingJson ? (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      color="inherit"
-                      onClick={() => {
-                        setEditingJson(false)
-                        setEditError(null)
-                        setEditingText('')
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={() => {
-                        try {
-                          const parsed2 = JSON.parse(editingText)
-                          setJsonValue(parsed2)
-                          setEditingJson(false)
-                          setEditError(null)
-                          setEditingText('')
-                          setToast({ msg: 'JSON válido aplicado com sucesso.', severity: 'success' })
-                        } catch (e) {
-                          const msg = e instanceof Error ? e.message : 'JSON inválido.'
-                          setEditError(msg)
-                          setToast({ msg: `JSON inválido: ${msg}`, severity: 'error' })
-                        }
-                      }}
-                    >
-                      Validar
-                    </Button>
-                  </Box>
-                ) : (
+            />
+            <CardContent>
+              {editingJson ? (
+                <Box sx={{ display: 'flex', gap: 1, mb: 1.5, justifyContent: 'center' }}>
                   <Button
                     size="small"
                     variant="outlined"
+                    color="error"
+                    startIcon={<X size={14} />}
+                    onClick={() => {
+                      setEditingJson(false)
+                      setEditError(null)
+                      setEditingText('')
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color="success"
+                    startIcon={<CheckCheck size={14} />}
+                    onClick={() => {
+                      try {
+                        const parsed2 = JSON.parse(editingText)
+                        setJsonValue(parsed2)
+                        setEditingJson(false)
+                        setEditError(null)
+                        setEditingText('')
+                        setToast({ msg: 'JSON válido aplicado com sucesso.', severity: 'success' })
+                      } catch (e) {
+                        const msg = e instanceof Error ? e.message : 'JSON inválido.'
+                        setEditError(msg)
+                        setToast({ msg: `JSON inválido: ${msg}`, severity: 'error' })
+                      }
+                    }}
+                  >
+                    Validar
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ mb: 1.5 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Pencil size={14} />}
                     onClick={() => {
                       setEditingText(JSON.stringify(parsed, null, 2))
                       setEditingJson(true)
@@ -1085,10 +1155,8 @@ export default function App() {
                   >
                     Editar JSON
                   </Button>
-                )
-              }
-            />
-            <CardContent>
+                </Box>
+              )}
               {editingJson ? (
                 <Box>
                   <CodeMirror
@@ -1124,6 +1192,7 @@ export default function App() {
                 />
               )}
             </CardContent>
+
           </Card>
         </Grid>
       </Grid>
