@@ -32,29 +32,107 @@ type NodeTarget = {
   kind: NodeKind
 }
 
-function moveArrayItem<T>(arr: T[], fromIndex: number, toIndex: number): T[] {
-  const copy = arr.slice()
-  const [item] = copy.splice(fromIndex, 1)
-  // After removal, indices shift left when moving forward.
-  const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex
-  copy.splice(adjustedTo, 0, item)
-  return copy
+
+type DndPayload = {
+  fromPath: Array<string | number>
+  fromKey?: string  // original object key, preserved when moving into another object
 }
 
-function moveObjectKey<T extends Record<string, any>>(
-  obj: T,
-  fromKey: string,
-  toKey: string
-): T {
-  if (fromKey === toKey) return obj
-  const entries = Object.entries(obj)
-  const fromIdx = entries.findIndex(([k]) => k === fromKey)
-  const toIdx = entries.findIndex(([k]) => k === toKey)
-  if (fromIdx < 0 || toIdx < 0) return obj
-  const [moved] = entries.splice(fromIdx, 1)
-  entries.splice(toIdx, 0, moved)
-  // JS preserves insertion order for string keys.
-  return Object.fromEntries(entries) as T
+function getAtPath(root: JsonValue, path: Array<string | number>): JsonValue {
+  let cur = root
+  for (const seg of path) cur = cur[seg]
+  return cur
+}
+
+function removeAtPath(root: JsonValue, path: Array<string | number>): JsonValue {
+  if (path.length === 0) return root
+  return setAtPath(root, path.slice(0, -1), (parent: any) => {
+    const key = path[path.length - 1]
+    if (Array.isArray(parent)) {
+      const copy = [...parent]
+      copy.splice(key as number, 1)
+      return copy
+    } else {
+      const copy = { ...parent }
+      delete copy[key as string]
+      return copy
+    }
+  })
+}
+
+function insertAtPath(
+  root: JsonValue,
+  parentPath: Array<string | number>,
+  key: string | number | null,
+  value: JsonValue,
+  originalKey?: string,
+  insertAfter?: boolean
+): JsonValue {
+  return setAtPath(root, parentPath, (parent: any) => {
+    if (Array.isArray(parent)) {
+      const copy = [...parent]
+      let idx = key === null ? copy.length : (key as number)
+      if (insertAfter && key !== null) idx = (key as number) + 1
+      copy.splice(idx, 0, value)
+      return copy
+    } else {
+      const wantedKey: string = originalKey ?? `field${Object.keys(parent).length}`
+      const finalKey = (wantedKey in parent)
+        ? `${wantedKey}_${Object.keys(parent).length}`
+        : wantedKey
+      const entries = Object.entries(parent)
+      if (key !== null) {
+        const toIdx = entries.findIndex(([k]) => k === (key as string))
+        if (toIdx < 0) return { ...parent, [finalKey]: value }
+        entries.splice(insertAfter ? toIdx + 1 : toIdx, 0, [finalKey, value])
+      } else {
+        entries.push([finalKey, value])
+      }
+      return Object.fromEntries(entries)
+    }
+  })
+}
+
+// Returns true if candidateAncestor is an ancestor-or-equal of path
+function isAncestorOrEqual(candidateAncestor: Array<string | number>, path: Array<string | number>): boolean {
+  if (candidateAncestor.length > path.length) return false
+  return candidateAncestor.every((seg, i) => seg === path[i])
+}
+
+function moveNode(
+  root: JsonValue,
+  payload: DndPayload,
+  toParentPath: Array<string | number>,
+  toKey: string | number | null
+): JsonValue {
+  const { fromPath, fromKey } = payload
+  // Prevent dropping into own subtree
+  if (isAncestorOrEqual(fromPath, toParentPath)) return root
+  // Prevent dropping item onto itself (same parent + same key)
+  const fromParentPath = fromPath.slice(0, -1)
+  const fromSlot = fromPath[fromPath.length - 1]
+  if (
+    JSON.stringify(fromParentPath) === JSON.stringify(toParentPath) &&
+    toKey === fromSlot
+  ) return root
+  const value = getAtPath(root, fromPath)
+  const sameParent = JSON.stringify(fromParentPath) === JSON.stringify(toParentPath)
+  // Determine if we're moving down (from above to below) within same parent
+  const movingDown = sameParent && toKey !== null && (
+    typeof toKey === 'number'
+      ? (fromSlot as number) < (toKey as number)
+      : Object.keys(getAtPath(root, toParentPath)).indexOf(fromSlot as string) <
+        Object.keys(getAtPath(root, toParentPath)).indexOf(toKey as string)
+  )
+  // For arrays moving within same parent, toKey already accounts for pre-removal position;
+  // after removing the item, target index shifts down by 1 when moving forward — but we use
+  // insertAfter on the adjusted index instead.
+  let adjustedKey = toKey
+  if (sameParent && toKey !== null && typeof toKey === 'number' && movingDown) {
+    adjustedKey = (toKey as number) - 1
+  }
+  const afterRemove = removeAtPath(root, fromPath)
+  return insertAtPath(afterRemove, toParentPath, adjustedKey, value, fromKey, movingDown)
 }
 
 const isObject = (v: unknown): v is JsonObject =>
@@ -200,41 +278,103 @@ function NumberField({ value, onChange }: { value: number; onChange: (n: number)
   )
 }
 
-function ObjectItem(props: {
-  objKey: string
-  value: JsonValue
-  parentPath: Array<string | number>
-  obj: JsonObject
-  onUpdate: (path: Array<string | number>, next: any) => void
-  collapsed: Set<string>
-  toggleCollapse: (key: string) => void
-  isComplexValue: (v: JsonValue) => boolean
-  renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
-  moveObjectKey: (obj: JsonObject, from: string, to: string) => JsonObject
-}) {
-  const { objKey: k, value: v, parentPath, obj, onUpdate, collapsed, toggleCollapse, isComplexValue, renderChildren, moveObjectKey } = props
+function useDndItem(path: Array<string | number>, fromKey?: string) {
   const [isOver, setIsOver] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const depth = React.useRef(0)
-  const collapseKey = JSON.stringify([...parentPath, k])
 
+  const dragHandleProps = {
+    draggable: true as const,
+    onDragStart: (e: React.DragEvent) => {
+      const payload: DndPayload = { fromPath: path, fromKey }
+      e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify(payload))
+      e.dataTransfer.effectAllowed = 'move'
+      setTimeout(() => setIsDragging(true), 0)
+    },
+    onDragEnd: () => { setIsDragging(false); setIsOver(false); depth.current = 0 },
+  }
+
+  const dropZoneProps = (onDrop: (payload: DndPayload) => void) => ({
+    onDragEnter: (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) },
+    onDragLeave: (e: React.DragEvent) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) },
+    onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault(); e.stopPropagation()
+      depth.current = 0; setIsOver(false)
+      const raw = e.dataTransfer.getData('application/jsonve-dnd')
+      if (!raw) return
+      onDrop(JSON.parse(raw) as DndPayload)
+    },
+  })
+
+  return { isOver, isDragging, dragHandleProps, dropZoneProps }
+}
+
+function ContainerDropZone(props: {
+  parentPath: Array<string | number>
+  onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
+  parentKind: 'object' | 'array'
+}) {
+  const { parentPath, onMove, parentKind } = props
+  const [isOver, setIsOver] = useState(false)
+  const depth = React.useRef(0)
   return (
     <Box
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
       onDragLeave={(e) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
       onDrop={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        depth.current = 0
-        setIsOver(false)
+        e.preventDefault(); e.stopPropagation()
+        depth.current = 0; setIsOver(false)
         const raw = e.dataTransfer.getData('application/jsonve-dnd')
         if (!raw) return
-        const data = JSON.parse(raw) as { containerId: string; kind: 'object' | 'array'; fromKey?: string; fromIndex?: number }
-        if (data.containerId !== JSON.stringify(parentPath)) return
-        if (data.kind !== 'object' || !data.fromKey) return
-        onUpdate(parentPath, moveObjectKey(obj, data.fromKey, k))
+        const payload = JSON.parse(raw) as DndPayload
+        if (isAncestorOrEqual(payload.fromPath, parentPath)) return
+        onMove(payload, parentPath, null)
       }}
+      sx={{
+        mt: 0.5,
+        height: 36,
+        borderRadius: 1,
+        border: '2px dashed',
+        borderColor: isOver ? 'primary.main' : 'divider',
+        backgroundColor: isOver ? 'action.hover' : 'transparent',
+        transition: 'border-color 0.1s, background-color 0.1s',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Typography variant="caption" color={isOver ? 'primary' : 'text.disabled'}>
+        Arraste itens para cá
+      </Typography>
+    </Box>
+  )
+}
+
+function ObjectItem(props: {
+  objKey: string
+  value: JsonValue
+  parentPath: Array<string | number>
+  obj: JsonObject
+  onUpdate: (path: Array<string | number>, next: any) => void
+  onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
+  collapsed: Set<string>
+  toggleCollapse: (key: string) => void
+  isComplexValue: (v: JsonValue) => boolean
+  renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
+}) {
+  const { objKey: k, value: v, parentPath, obj, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren } = props
+  const itemPath = [...parentPath, k]
+  const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath, k)
+  const collapseKey = JSON.stringify(itemPath)
+
+  return (
+    <Box
+      {...dropZoneProps((payload) => {
+        if (isAncestorOrEqual(payload.fromPath, itemPath)) return
+        onMove(payload, parentPath, k)
+      })}
       sx={{
         mb: 1.5,
         opacity: isDragging ? 0.4 : 1,
@@ -246,13 +386,7 @@ function ObjectItem(props: {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
         <Box
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'object', fromKey: k }))
-            e.dataTransfer.effectAllowed = 'move'
-            setTimeout(() => setIsDragging(true), 0)
-          }}
-          onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
+          {...dragHandleProps}
           sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', cursor: 'grab' }}
         >
           <GripVertical size={14} />
@@ -277,7 +411,7 @@ function ObjectItem(props: {
             onUpdate(parentPath, o)
           }}
         />
-        <NodeEditor value={v} path={[...parentPath, k]} onUpdate={onUpdate} />
+        <NodeEditor value={v} path={itemPath} onUpdate={onUpdate} onMove={onMove} />
         {isComplexValue(v) && (
           <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
@@ -287,8 +421,9 @@ function ObjectItem(props: {
         )}
       </Box>
       {isComplexValue(v) && !collapsed.has(collapseKey) && (
-        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5 }}>
-          {renderChildren(v, [...parentPath, k])}
+        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
+          {renderChildren(v, itemPath)}
+          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(v) ? 'array' : 'object'} />
         </Box>
       )}
     </Box>
@@ -301,35 +436,23 @@ function ArrayItem(props: {
   parentPath: Array<string | number>
   arr: JsonArray
   onUpdate: (path: Array<string | number>, next: any) => void
+  onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
   collapsed: Set<string>
   toggleCollapse: (key: string) => void
   isComplexValue: (v: JsonValue) => boolean
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
-  moveArrayItem: (arr: JsonArray, from: number, to: number) => JsonArray
 }) {
-  const { index: i, item, parentPath, arr, onUpdate, collapsed, toggleCollapse, isComplexValue, renderChildren, moveArrayItem } = props
-  const [isOver, setIsOver] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const depth = React.useRef(0)
-  const collapseKey = JSON.stringify([...parentPath, i])
+  const { index: i, item, parentPath, arr, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren } = props
+  const itemPath = [...parentPath, i]
+  const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath)
+  const collapseKey = JSON.stringify(itemPath)
 
   return (
     <Box
-      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
-      onDragLeave={(e) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }}
-      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
-      onDrop={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        depth.current = 0
-        setIsOver(false)
-        const raw = e.dataTransfer.getData('application/jsonve-dnd')
-        if (!raw) return
-        const data = JSON.parse(raw) as { containerId: string; kind: 'object' | 'array'; fromKey?: string; fromIndex?: number }
-        if (data.containerId !== JSON.stringify(parentPath)) return
-        if (data.kind !== 'array' || typeof data.fromIndex !== 'number') return
-        onUpdate(parentPath, moveArrayItem(arr, data.fromIndex, i))
-      }}
+      {...dropZoneProps((payload) => {
+        if (isAncestorOrEqual(payload.fromPath, itemPath)) return
+        onMove(payload, parentPath, i)
+      })}
       sx={{
         mb: 1.5,
         opacity: isDragging ? 0.4 : 1,
@@ -341,13 +464,7 @@ function ArrayItem(props: {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
         <Box
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.setData('application/jsonve-dnd', JSON.stringify({ containerId: JSON.stringify(parentPath), kind: 'array', fromIndex: i }))
-            e.dataTransfer.effectAllowed = 'move'
-            setTimeout(() => setIsDragging(true), 0)
-          }}
-          onDragEnd={() => { setIsDragging(false); setIsOver(false); depth.current = 0 }}
+          {...dragHandleProps}
           sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', cursor: 'grab' }}
         >
           <GripVertical size={14} />
@@ -358,7 +475,7 @@ function ArrayItem(props: {
           </IconButton>
         </Tooltip>
         <Typography variant="body2" sx={{ minWidth: 28, fontFamily: 'monospace' }}>[{i}]</Typography>
-        <NodeEditor value={item} path={[...parentPath, i]} onUpdate={onUpdate} />
+        <NodeEditor value={item} path={itemPath} onUpdate={onUpdate} onMove={onMove} />
         {isComplexValue(item) && (
           <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
@@ -368,8 +485,9 @@ function ArrayItem(props: {
         )}
       </Box>
       {isComplexValue(item) && !collapsed.has(collapseKey) && (
-        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5 }}>
-          {renderChildren(item, [...parentPath, i])}
+        <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
+          {renderChildren(item, itemPath)}
+          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(item) ? 'array' : 'object'} />
         </Box>
       )}
     </Box>
@@ -380,8 +498,9 @@ function NodeEditor(props: {
   value: JsonValue
   path: Array<string | number>
   onUpdate: (path: Array<string | number>, next: any) => void
+  onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
 }) {
-  const { value, path, onUpdate } = props
+  const { value, path, onUpdate, onMove } = props
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => {
@@ -463,8 +582,6 @@ function NodeEditor(props: {
           <MenuItem value="false">false</MenuItem>
         </Select>
       </FormControl>
-    ) : nodeType === 'null' ? (
-      <TextField size="small" value="null" variant="outlined" disabled sx={{ flex: 1 }} />
     ) : null
 
   const isComplexValue = (v: JsonValue) =>
@@ -472,7 +589,7 @@ function NodeEditor(props: {
 
   const renderChildren = (v: JsonValue, parentPath: Array<string | number>): React.ReactNode => {
     if (Array.isArray(v)) {
-      if (v.length === 0) return <Typography variant="body2" color="text.secondary">Sem itens</Typography>
+      if (v.length === 0) return null
       return <>
         {v.map((item, i) => (
           <ArrayItem
@@ -482,18 +599,18 @@ function NodeEditor(props: {
             parentPath={parentPath}
             arr={v}
             onUpdate={onUpdate}
+            onMove={onMove}
             collapsed={collapsed}
             toggleCollapse={toggleCollapse}
             isComplexValue={isComplexValue}
             renderChildren={renderChildren}
-            moveArrayItem={moveArrayItem}
           />
         ))}
       </>
     }
     if (typeof v === 'object' && v !== null) {
       const entries = Object.entries(v as JsonObject)
-      if (entries.length === 0) return <Typography variant="body2" color="text.secondary">Sem campos</Typography>
+      if (entries.length === 0) return null
       return <>
         {entries.map(([k, child]) => (
           <ObjectItem
@@ -503,11 +620,11 @@ function NodeEditor(props: {
             parentPath={parentPath}
             obj={v as JsonObject}
             onUpdate={onUpdate}
+            onMove={onMove}
             collapsed={collapsed}
             toggleCollapse={toggleCollapse}
             isComplexValue={isComplexValue}
             renderChildren={renderChildren}
-            moveObjectKey={moveObjectKey}
           />
         ))}
       </>
@@ -551,11 +668,10 @@ function NodeEditor(props: {
     return (
       <Box sx={{ mt: 1 }}>
         {hasComplex && (
-          <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 1.5, justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               size="small"
-              startIcon={<ChevronDown size={14} />}
               onClick={() => setCollapsed(new Set())}
             >
               Expandir todos
@@ -563,7 +679,6 @@ function NodeEditor(props: {
             <Button
               variant="outlined"
               size="small"
-              startIcon={<ChevronRight size={14} />}
               onClick={() => setCollapsed(new Set(collectComplexKeys(value, path)))}
             >
               Recolher todos
@@ -571,6 +686,7 @@ function NodeEditor(props: {
           </Box>
         )}
         {renderChildren(value, path)}
+        <ContainerDropZone parentPath={path} onMove={onMove} parentKind={isArray(value) ? 'array' : 'object'} />
       </Box>
     )
   }
@@ -708,7 +824,7 @@ export default function App() {
         </Grid>
       </Grid>
 
-      <Grid container spacing={2} sx={{ alignItems: 'stretch' }}>
+      <Grid container spacing={2} sx={{ alignItems: 'stretch', p: 2 }}>
         <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ height: '100%' }}>
             <CardHeader title="Modelo (visual)" subheader="Edição total + formulário" />
@@ -869,7 +985,7 @@ export default function App() {
                       </Grid>
                     </Grid>
 
-                    <Divider />
+                    <Divider sx={{ mt: 3 }} />
 
                 </Grid>
 
@@ -879,6 +995,9 @@ export default function App() {
                     path={[]}
                     onUpdate={(p, next) =>
                       setJsonValue((prev: JsonValue) => updatePrimitive(prev, p, next))
+                    }
+                    onMove={(payload, toParentPath, toKey) =>
+                      setJsonValue((prev: JsonValue) => moveNode(prev, payload, toParentPath, toKey))
                     }
                   />
                 </Grid>
