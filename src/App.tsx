@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
+  Alert,
   Button,
   Divider,
   Card,
@@ -11,6 +12,7 @@ import {
   IconButton,
   Grid,
   Select,
+  Snackbar,
   Switch,
   TextField,
   Tooltip,
@@ -19,6 +21,8 @@ import {
 } from '@mui/material'
 import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
 import { z } from 'zod'
+import CodeMirror from '@uiw/react-codemirror'
+import { json } from '@codemirror/lang-json'
 
 type JsonValue = any
 type JsonObject = Record<string, any>
@@ -314,16 +318,18 @@ function ContainerDropZone(props: {
   parentPath: Array<string | number>
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
   parentKind: 'object' | 'array'
+  locked?: boolean
 }) {
-  const { parentPath, onMove, parentKind } = props
+  const { parentPath, onMove, locked } = props
   const [isOver, setIsOver] = useState(false)
   const depth = React.useRef(0)
   return (
     <Box
-      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
+      onDragEnter={(e) => { if (locked) return; e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }}
       onDragLeave={(e) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }}
-      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
+      onDragOver={(e) => { if (locked) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }}
       onDrop={(e) => {
+        if (locked) return
         e.preventDefault(); e.stopPropagation()
         depth.current = 0; setIsOver(false)
         const raw = e.dataTransfer.getData('application/jsonve-dnd')
@@ -363,22 +369,23 @@ function ObjectItem(props: {
   toggleCollapse: (key: string) => void
   isComplexValue: (v: JsonValue) => boolean
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
+  locked: boolean
 }) {
-  const { objKey: k, value: v, parentPath, obj, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren } = props
+  const { objKey: k, value: v, parentPath, obj, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren, locked } = props
   const itemPath = [...parentPath, k]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath, k)
   const collapseKey = JSON.stringify(itemPath)
 
   return (
     <Box
-      {...dropZoneProps((payload) => {
+      {...(!locked ? dropZoneProps((payload) => {
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         onMove(payload, parentPath, k)
-      })}
+      }) : {})}
       sx={{
         mb: 1.5,
         opacity: isDragging ? 0.4 : 1,
-        outline: isOver ? '2px solid' : 'none',
+        outline: isOver && !locked ? '2px solid' : 'none',
         outlineColor: 'primary.main',
         borderRadius: 1,
         transition: 'opacity 0.15s, outline 0.1s',
@@ -386,23 +393,27 @@ function ObjectItem(props: {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
         <Box
-          {...dragHandleProps}
-          sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', cursor: 'grab' }}
+          {...(!locked ? dragHandleProps : {})}
+          sx={{ display: 'flex', alignItems: 'center', color: locked ? 'action.disabled' : 'text.secondary', cursor: locked ? 'default' : 'grab' }}
         >
           <GripVertical size={14} />
         </Box>
         <Tooltip title={`Deletar ${k}`} arrow>
-          <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); const o = { ...obj }; delete o[k]; onUpdate(parentPath, o) }}>
-            <Trash2 size={16} />
-          </IconButton>
+          <span>
+            <IconButton size="small" color="error" disabled={locked} onClick={(e) => { e.stopPropagation(); const o = { ...obj }; delete o[k]; onUpdate(parentPath, o) }}>
+              <Trash2 size={16} />
+            </IconButton>
+          </span>
         </Tooltip>
         <TextField
           size="small"
           defaultValue={k}
           variant="outlined"
+          disabled={locked}
           sx={{ width: 120 }}
           onMouseDown={(e) => e.stopPropagation()}
           onBlur={(e) => {
+            if (locked) return
             const nextKey = e.target.value.trim()
             if (!nextKey || nextKey === k) return
             const o = { ...obj }
@@ -411,7 +422,7 @@ function ObjectItem(props: {
             onUpdate(parentPath, o)
           }}
         />
-        <NodeEditor value={v} path={itemPath} onUpdate={onUpdate} onMove={onMove} />
+        <NodeEditor value={v} path={itemPath} onUpdate={onUpdate} onMove={onMove} locked={locked} />
         {isComplexValue(v) && (
           <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
@@ -423,7 +434,7 @@ function ObjectItem(props: {
       {isComplexValue(v) && !collapsed.has(collapseKey) && (
         <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
           {renderChildren(v, itemPath)}
-          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(v) ? 'array' : 'object'} />
+          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(v) ? 'array' : 'object'} locked={locked} />
         </Box>
       )}
     </Box>
@@ -441,22 +452,23 @@ function ArrayItem(props: {
   toggleCollapse: (key: string) => void
   isComplexValue: (v: JsonValue) => boolean
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
+  locked: boolean
 }) {
-  const { index: i, item, parentPath, arr, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren } = props
+  const { index: i, item, parentPath, arr, onUpdate, onMove, collapsed, toggleCollapse, isComplexValue, renderChildren, locked } = props
   const itemPath = [...parentPath, i]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath)
   const collapseKey = JSON.stringify(itemPath)
 
   return (
     <Box
-      {...dropZoneProps((payload) => {
+      {...(!locked ? dropZoneProps((payload) => {
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         onMove(payload, parentPath, i)
-      })}
+      }) : {})}
       sx={{
         mb: 1.5,
         opacity: isDragging ? 0.4 : 1,
-        outline: isOver ? '2px solid' : 'none',
+        outline: isOver && !locked ? '2px solid' : 'none',
         outlineColor: 'primary.main',
         borderRadius: 1,
         transition: 'opacity 0.15s, outline 0.1s',
@@ -464,18 +476,20 @@ function ArrayItem(props: {
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
         <Box
-          {...dragHandleProps}
-          sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary', cursor: 'grab' }}
+          {...(!locked ? dragHandleProps : {})}
+          sx={{ display: 'flex', alignItems: 'center', color: locked ? 'action.disabled' : 'text.secondary', cursor: locked ? 'default' : 'grab' }}
         >
           <GripVertical size={14} />
         </Box>
         <Tooltip title={`Deletar [${i}]`} arrow>
-          <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); const a = [...arr]; a.splice(i, 1); onUpdate(parentPath, a) }}>
-            <Trash2 size={16} />
-          </IconButton>
+          <span>
+            <IconButton size="small" color="error" disabled={locked} onClick={(e) => { e.stopPropagation(); const a = [...arr]; a.splice(i, 1); onUpdate(parentPath, a) }}>
+              <Trash2 size={16} />
+            </IconButton>
+          </span>
         </Tooltip>
         <Typography variant="body2" sx={{ minWidth: 28, fontFamily: 'monospace' }}>[{i}]</Typography>
-        <NodeEditor value={item} path={itemPath} onUpdate={onUpdate} onMove={onMove} />
+        <NodeEditor value={item} path={itemPath} onUpdate={onUpdate} onMove={onMove} locked={locked} />
         {isComplexValue(item) && (
           <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
             <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
@@ -487,7 +501,7 @@ function ArrayItem(props: {
       {isComplexValue(item) && !collapsed.has(collapseKey) && (
         <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
           {renderChildren(item, itemPath)}
-          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(item) ? 'array' : 'object'} />
+          <ContainerDropZone parentPath={itemPath} onMove={onMove} parentKind={isArray(item) ? 'array' : 'object'} locked={locked} />
         </Box>
       )}
     </Box>
@@ -499,8 +513,9 @@ function NodeEditor(props: {
   path: Array<string | number>
   onUpdate: (path: Array<string | number>, next: any) => void
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
+  locked: boolean
 }) {
-  const { value, path, onUpdate, onMove } = props
+  const { value, path, onUpdate, onMove, locked } = props
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => {
@@ -546,6 +561,7 @@ function NodeEditor(props: {
         labelId={`type-${path.join('-')}`}
         value={nodeType}
         label="Tipo"
+        disabled={locked}
         onChange={(e) => setNodeType(e.target.value as typeof nodeType)}
       >
         <MenuItem value="string">Texto</MenuItem>
@@ -564,11 +580,12 @@ function NodeEditor(props: {
         size="small"
         value={value ?? ''}
         variant="outlined"
+        disabled={locked}
         onChange={(e) => onUpdate(path, e.target.value)}
         sx={{ flex: 1 }}
       />
     ) : nodeType === 'number' ? (
-      <NumberField value={value as number} onChange={(n) => onUpdate(path, n)} />
+      <NumberField value={value as number} onChange={(n) => { if (!locked) onUpdate(path, n) }} />
     ) : nodeType === 'boolean' ? (
       <FormControl size="small" sx={{ minWidth: 90 }}>
         <InputLabel id={`bool-${path.join('-')}`}>Valor</InputLabel>
@@ -576,6 +593,7 @@ function NodeEditor(props: {
           labelId={`bool-${path.join('-')}`}
           value={String(value)}
           label="Valor"
+          disabled={locked}
           onChange={(e) => onUpdate(path, e.target.value === 'true')}
         >
           <MenuItem value="true">true</MenuItem>
@@ -604,6 +622,7 @@ function NodeEditor(props: {
             toggleCollapse={toggleCollapse}
             isComplexValue={isComplexValue}
             renderChildren={renderChildren}
+            locked={locked}
           />
         ))}
       </>
@@ -625,6 +644,7 @@ function NodeEditor(props: {
             toggleCollapse={toggleCollapse}
             isComplexValue={isComplexValue}
             renderChildren={renderChildren}
+            locked={locked}
           />
         ))}
       </>
@@ -686,7 +706,7 @@ function NodeEditor(props: {
           </Box>
         )}
         {renderChildren(value, path)}
-        <ContainerDropZone parentPath={path} onMove={onMove} parentKind={isArray(value) ? 'array' : 'object'} />
+        <ContainerDropZone parentPath={path} onMove={onMove} parentKind={isArray(value) ? 'array' : 'object'} locked={locked} />
       </Box>
     )
   }
@@ -725,6 +745,11 @@ export default function App() {
     const n = Number(valueNumberText)
     return Number.isFinite(n) ? n : 0
   }, [valueNumberText])
+
+  const [editingJson, setEditingJson] = useState(false)
+  const [editingText, setEditingText] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; severity: 'success' | 'error' } | null>(null)
 
   const parsed = useMemo(() => jsonValue, [jsonValue])
 
@@ -979,7 +1004,7 @@ export default function App() {
 
                     <Grid container spacing={1.25} sx={{ justifyContent: 'flex-end' }}>
                       <Grid size={{ xs: 12, md: 'auto' }}>
-                        <Button variant="contained" onClick={onAdd} disabled={!selectedTarget}>
+                        <Button variant="contained" onClick={onAdd} disabled={!selectedTarget || editingJson}>
                           Adicionar
                         </Button>
                       </Grid>
@@ -993,6 +1018,7 @@ export default function App() {
                   <NodeEditor
                     value={parsed}
                     path={[]}
+                    locked={editingJson}
                     onUpdate={(p, next) =>
                       setJsonValue((prev: JsonValue) => updatePrimitive(prev, p, next))
                     }
@@ -1008,27 +1034,110 @@ export default function App() {
 
         <Grid size={{ xs: 12, md: 6 }}>
           <Card sx={{ height: '100%' }}>
-            <CardHeader title="JSON Final" subheader="Somente leitura" />
+            <CardHeader
+              title="JSON Final"
+              subheader={editingJson ? 'Modo edição manual — valide ou cancele para continuar' : 'Somente leitura'}
+              action={
+                editingJson ? (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="inherit"
+                      onClick={() => {
+                        setEditingJson(false)
+                        setEditError(null)
+                        setEditingText('')
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => {
+                        try {
+                          const parsed2 = JSON.parse(editingText)
+                          setJsonValue(parsed2)
+                          setEditingJson(false)
+                          setEditError(null)
+                          setEditingText('')
+                          setToast({ msg: 'JSON válido aplicado com sucesso.', severity: 'success' })
+                        } catch (e) {
+                          const msg = e instanceof Error ? e.message : 'JSON inválido.'
+                          setEditError(msg)
+                          setToast({ msg: `JSON inválido: ${msg}`, severity: 'error' })
+                        }
+                      }}
+                    >
+                      Validar
+                    </Button>
+                  </Box>
+                ) : (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      setEditingText(JSON.stringify(parsed, null, 2))
+                      setEditingJson(true)
+                      setEditError(null)
+                    }}
+                  >
+                    Editar JSON
+                  </Button>
+                )
+              }
+            />
             <CardContent>
-              <TextField
-                value={JSON.stringify(parsed, null, 2)}
-                multiline
-                minRows={12}
-                maxRows={30}
-                fullWidth
-                disabled
-                sx={{
-                  '& textarea': {
-                    fontFamily: 'var(--mono)',
+              {editingJson ? (
+                <Box>
+                  <CodeMirror
+                    value={editingText}
+                    extensions={[json()]}
+                    onChange={(val) => { setEditingText(val); setEditError(null) }}
+                    style={{
+                      fontSize: 14,
+                      textAlign: 'left',
+                      border: editError ? '2px solid #d32f2f' : '1px solid rgba(0,0,0,0.23)',
+                      borderRadius: 4,
+                      minHeight: 300,
+                    }}
+                  />
+                  {editError && (
+                    <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                      {editError}
+                    </Typography>
+                  )}
+                </Box>
+              ) : (
+                <CodeMirror
+                  value={JSON.stringify(parsed, null, 2)}
+                  extensions={[json()]}
+                  editable={false}
+                  style={{
                     fontSize: 14,
-                    lineHeight: 1.5,
-                  },
-                }}
-              />
+                    textAlign: 'left',
+                    border: '1px solid rgba(0,0,0,0.23)',
+                    borderRadius: 4,
+                    minHeight: 300,
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={4000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={toast?.severity ?? 'info'} onClose={() => setToast(null)} variant="filled">
+          {toast?.msg}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }
