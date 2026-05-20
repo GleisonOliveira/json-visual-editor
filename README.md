@@ -1,5 +1,8 @@
 # JSON Visual Editor
 
+[![PR Checks](https://github.com/GleisonOliveira/json-visual-editor/actions/workflows/pr.yml/badge.svg)](https://github.com/GleisonOliveira/json-visual-editor/actions/workflows/pr.yml)
+[![Deploy](https://github.com/GleisonOliveira/json-visual-editor/actions/workflows/deploy.yml/badge.svg)](https://github.com/GleisonOliveira/json-visual-editor/actions/workflows/deploy.yml)
+
 Editor visual de JSON com interface drag-and-drop. Permite visualizar, editar e navegar em estruturas JSON de forma gráfica, com painel de código sincronizado em tempo real.
 
 ## Stack

@@ -41,36 +41,8 @@ jobs:
             const match = title.match(/^(\w+)(\(.+\))?!?:/);
             if (!match) return;
 
-            const type = match[1];
-            const label = typeMap[type];
+            const label = typeMap[match[1]];
             if (!label) return;
-
-            const labels = await github.rest.issues.listLabelsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            });
-
-            const exists = labels.data.some(l => l.name === label);
-            if (!exists) {
-              const colors = {
-                feature:       '0075ca',
-                bugfix:        'd73a4a',
-                refactor:      'e4e669',
-                documentation: '0052cc',
-                chore:         'fef2c0',
-                test:          'bfd4f2',
-                performance:   'c5def5',
-                ci:            'f9d0c4',
-                build:         'ededed',
-                style:         'cfd3d7',
-              };
-              await github.rest.issues.createLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: label,
-                color: colors[label] || 'ededed',
-              });
-            }
 
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
