@@ -56,22 +56,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/github-script@v7
         with:
-          types: |
-            feat
-            fix
-            refactor
-            docs
-            chore
-            test
-            perf
-            ci
-            build
-            style
-          requireScope: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.pull_request.title;
+            const valid = /^(feat|fix|refactor|docs|chore|test|perf|ci|build|style)(\(.+\))?!?:\s.+/.test(title);
+            if (!valid) {
+              core.setFailed(
+                `PR title "${title}" não segue Conventional Commits.\n` +
+                `Formato esperado: <tipo>: <descrição>\n` +
+                `Tipos válidos: feat, fix, refactor, docs, chore, test, perf, ci, build, style`
+              );
+            }
 
   lint:
     name: Lint & Type Check
