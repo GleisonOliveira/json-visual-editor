@@ -1,26 +1,26 @@
-## Por que esta PR?
+## Why this PR?
 
-<!-- Descreva o motivo desta PR. O que ela resolve ou adiciona? -->
+<!-- Describe the reason for this PR. What does it fix or add? -->
 
-## Issue relacionada
+## Related issue
 
-<!-- Referência: "Closes #123", "Fixes #456", ou "N/A" -->
+<!-- Reference: "Closes #123", "Fixes #456", or "N/A" -->
 
-## O que foi alterado?
+## What changed?
 
-<!-- Liste as principais mudanças realizadas -->
+<!-- List the main changes made -->
 
-## Prints / Imagens
+## Screenshots / Images
 
-<!-- Cole prints ou GIFs das mudanças visuais. Se não houver mudanças de UI, remova esta seção. -->
+<!-- Paste screenshots or GIFs of visual changes. If no UI changes, remove this section. -->
 
-| Antes | Depois |
-|-------|--------|
-|       |        |
+| Before | After |
+|--------|-------|
+|        |       |
 
 ## Checklist
 
-- [ ] Lint executado (`npm run lint`)
-- [ ] Verificação de tipos passou (`npm run type-check`)
-- [ ] Build executado com sucesso (`npm run build`)
-- [ ] Testado manualmente no navegador
+- [ ] Lint passed (`npm run lint`)
+- [ ] Type check passed (`npm run type-check`)
+- [ ] Build succeeded (`npm run build`)
+- [ ] Manually tested in browser

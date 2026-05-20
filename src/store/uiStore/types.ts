@@ -6,6 +6,12 @@ export type UiStore = {
   mode: 'light' | 'dark'
   toggleMode: () => void
 
+  expanded: Set<string>
+  toggleExpand: (key: string) => void
+  expandPath: (path: Array<string | number>) => void
+  collapseAll: () => void
+  expandAll: (allKeys: string[]) => void
+
   editingJson: boolean
   editingText: string
   editError: string | null

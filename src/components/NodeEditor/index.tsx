@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   Box,
   FormControl,
@@ -15,6 +15,7 @@ import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
 import type { JsonValue, JsonObject, JsonArray, NullableFieldType } from '../../types'
 import { isArray, isObject, buildDefaultValue } from '../../lib/jsonUtils'
 import { useJsonStore } from '../../store/jsonStore'
+import { useUiStore } from '../../store/uiStore'
 import { NumberField } from '../NumberField'
 import { ContainerDropZone } from '../ContainerDropZone'
 import { useDndItem } from '../../hooks/useDndItem'
@@ -24,6 +25,16 @@ import { isPalettePayload, isAncestorOrEqual } from '../../lib/jsonUtils'
 
 const isComplexValue = (v: JsonValue) =>
   Array.isArray(v) || (typeof v === 'object' && v !== null)
+
+function expandInserted(parentPath: Array<string | number>, expandPathFn: (p: Array<string | number>) => void) {
+  const newJson = useJsonStore.getState().jsonValue
+  let node: JsonValue = newJson
+  for (const seg of parentPath) node = (node as Record<string | number, JsonValue>)[seg]
+  let newKey: string | number
+  if (Array.isArray(node)) newKey = node.length - 1
+  else newKey = Object.keys(node as object).at(-1)!
+  expandPathFn([...parentPath, newKey])
+}
 
 function collectComplexKeys(v: JsonValue, parentPath: Array<string | number>): string[] {
   const keys: string[] = []
@@ -52,21 +63,22 @@ function ObjectItem(props: {
   value: JsonValue
   parentPath: Array<string | number>
   obj: JsonObject
-  collapsed: Set<string>
-  toggleCollapse: (key: string) => void
+  expanded: Set<string>
+  toggleExpand: (key: string) => void
+  expandPath: (path: Array<string | number>) => void
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
 }) {
-  const { objKey: k, value: v, parentPath, obj, collapsed, toggleCollapse, renderChildren, locked } = props
+  const { objKey: k, value: v, parentPath, obj, expanded, toggleExpand, expandPath, renderChildren, locked } = props
   const { handleUpdate, handleMove, handleInsert } = useJsonStore()
   const itemPath = [...parentPath, k]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath, k)
-  const collapseKey = JSON.stringify(itemPath)
+  const expandKey = JSON.stringify(itemPath)
 
   return (
     <Box
       {...(!locked ? dropZoneProps((payload) => {
-        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, k); return }
+        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, k); expandInserted(parentPath, expandPath); return }
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         handleMove(payload, parentPath, k)
       }) : {})}
@@ -112,14 +124,14 @@ function ObjectItem(props: {
         />
         <InlineNodeEditor value={v} path={itemPath} locked={locked} />
         {isComplexValue(v) && (
-          <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
-            <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
-              {collapsed.has(collapseKey) ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+          <Tooltip title={expanded.has(expandKey) ? 'Recolher' : 'Expandir'} arrow>
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleExpand(expandKey) }} sx={{ ml: 'auto' }}>
+              {expanded.has(expandKey) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </IconButton>
           </Tooltip>
         )}
       </Box>
-      {isComplexValue(v) && !collapsed.has(collapseKey) && (
+      {isComplexValue(v) && expanded.has(expandKey) && (
         <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
           {renderChildren(v, itemPath)}
           <ContainerDropZone parentPath={itemPath} parentKind={isArray(v) ? 'array' : 'object'} locked={locked} />
@@ -136,21 +148,22 @@ function ArrayItem(props: {
   item: JsonValue
   parentPath: Array<string | number>
   arr: JsonArray
-  collapsed: Set<string>
-  toggleCollapse: (key: string) => void
+  expanded: Set<string>
+  toggleExpand: (key: string) => void
+  expandPath: (path: Array<string | number>) => void
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
 }) {
-  const { index: i, item, parentPath, arr, collapsed, toggleCollapse, renderChildren, locked } = props
+  const { index: i, item, parentPath, arr, expanded, toggleExpand, expandPath, renderChildren, locked } = props
   const { handleUpdate, handleMove, handleInsert } = useJsonStore()
   const itemPath = [...parentPath, i]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath)
-  const collapseKey = JSON.stringify(itemPath)
+  const expandKey = JSON.stringify(itemPath)
 
   return (
     <Box
       {...(!locked ? dropZoneProps((payload) => {
-        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, i); return }
+        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, i); expandInserted(parentPath, expandPath); return }
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         handleMove(payload, parentPath, i)
       }) : {})}
@@ -180,14 +193,14 @@ function ArrayItem(props: {
         <Typography variant="body2" sx={{ minWidth: 28, fontFamily: 'monospace' }}>[{i}]</Typography>
         <InlineNodeEditor value={item} path={itemPath} locked={locked} />
         {isComplexValue(item) && (
-          <Tooltip title={collapsed.has(collapseKey) ? 'Expandir' : 'Recolher'} arrow>
-            <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleCollapse(collapseKey) }} sx={{ ml: 'auto' }}>
-              {collapsed.has(collapseKey) ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+          <Tooltip title={expanded.has(expandKey) ? 'Recolher' : 'Expandir'} arrow>
+            <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleExpand(expandKey) }} sx={{ ml: 'auto' }}>
+              {expanded.has(expandKey) ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </IconButton>
           </Tooltip>
         )}
       </Box>
-      {isComplexValue(item) && !collapsed.has(collapseKey) && (
+      {isComplexValue(item) && expanded.has(expandKey) && (
         <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', mt: 0.5, py: 1 }}>
           {renderChildren(item, itemPath)}
           <ContainerDropZone parentPath={itemPath} parentKind={isArray(item) ? 'array' : 'object'} locked={locked} />
@@ -269,16 +282,9 @@ function InlineNodeEditor({ value, path, locked }: { value: JsonValue; path: Arr
 
 export function NodeEditor({ locked }: { locked: boolean }) {
   const { jsonValue, handleUpdate } = useJsonStore()
+  const { expanded, toggleExpand, expandPath, collapseAll, expandAll } = useUiStore()
   const value = jsonValue
   const path: Array<string | number> = []
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
-
-  const toggleCollapse = (key: string) =>
-    setCollapsed(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) { next.delete(key) } else { next.add(key) }
-      return next
-    })
 
   const nodeType: NullableFieldType =
     value === null ? 'null'
@@ -321,7 +327,7 @@ export function NodeEditor({ locked }: { locked: boolean }) {
       if (v.length === 0) return null
       return <>
         {v.map((item, i) => (
-          <ArrayItem key={i} index={i} item={item} parentPath={parentPath} arr={v} collapsed={collapsed} toggleCollapse={toggleCollapse} renderChildren={renderChildren} locked={locked} />
+          <ArrayItem key={i} index={i} item={item} parentPath={parentPath} arr={v} expanded={expanded} toggleExpand={toggleExpand} expandPath={expandPath} renderChildren={renderChildren} locked={locked} />
         ))}
       </>
     }
@@ -330,7 +336,7 @@ export function NodeEditor({ locked }: { locked: boolean }) {
       if (entries.length === 0) return null
       return <>
         {entries.map(([k, child]) => (
-          <ObjectItem key={k} objKey={k} value={child} parentPath={parentPath} obj={v as JsonObject} collapsed={collapsed} toggleCollapse={toggleCollapse} renderChildren={renderChildren} locked={locked} />
+          <ObjectItem key={k} objKey={k} value={child} parentPath={parentPath} obj={v as JsonObject} expanded={expanded} toggleExpand={toggleExpand} expandPath={expandPath} renderChildren={renderChildren} locked={locked} />
         ))}
       </>
     }
@@ -360,15 +366,16 @@ export function NodeEditor({ locked }: { locked: boolean }) {
     )
   }
 
-  const hasComplex = collectComplexKeys(value, path).length > 0
+  const allComplexKeys = collectComplexKeys(value, path)
+  const hasComplex = allComplexKeys.length > 0
   return (
     <Box>
       {hasComplex && (
         <Box sx={{ display: 'flex', mb: 1.5, justifyContent: 'flex-end' }}>
-          <Button variant="outlined" size="small" onClick={() => setCollapsed(new Set())}>
+          <Button variant="outlined" size="small" onClick={() => expandAll(allComplexKeys)}>
             Expandir todos
           </Button>
-          <Button variant="outlined" size="small" onClick={() => setCollapsed(new Set(collectComplexKeys(value, path)))}>
+          <Button variant="outlined" size="small" onClick={() => collapseAll()}>
             Recolher todos
           </Button>
         </Box>
