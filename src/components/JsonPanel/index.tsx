@@ -64,6 +64,18 @@ export function JsonPanel() {
             >
               Copiar
             </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Copy size={14} />}
+              onClick={() => {
+                navigator.clipboard.writeText(JSON.stringify(jsonValue))
+                  .then(() => setToast({ msg: 'JSON minificado copiado para o clipboard!', severity: 'success' }))
+                  .catch(() => setToast({ msg: 'Falha ao copiar o JSON.', severity: 'error' }))
+              }}
+            >
+              Copiar minificado
+            </Button>
           </Box>
         )}
 
