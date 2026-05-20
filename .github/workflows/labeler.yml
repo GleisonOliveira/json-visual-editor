@@ -1,0 +1,80 @@
+name: Label PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  label:
+    name: Apply Labels
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+
+      - name: Label by PR title prefix
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const title = context.payload.pull_request.title;
+            const typeMap = {
+              'feat':     'feature',
+              'fix':      'bugfix',
+              'refactor': 'refactor',
+              'docs':     'documentation',
+              'chore':    'chore',
+              'test':     'test',
+              'perf':     'performance',
+              'ci':       'ci',
+              'build':    'build',
+              'style':    'style',
+            };
+
+            const match = title.match(/^(\w+)(\(.+\))?!?:/);
+            if (!match) return;
+
+            const type = match[1];
+            const label = typeMap[type];
+            if (!label) return;
+
+            const labels = await github.rest.issues.listLabelsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const exists = labels.data.some(l => l.name === label);
+            if (!exists) {
+              const colors = {
+                feature:       '0075ca',
+                bugfix:        'd73a4a',
+                refactor:      'e4e669',
+                documentation: '0052cc',
+                chore:         'fef2c0',
+                test:          'bfd4f2',
+                performance:   'c5def5',
+                ci:            'f9d0c4',
+                build:         'ededed',
+                style:         'cfd3d7',
+              };
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: label,
+                color: colors[label] || 'ededed',
+              });
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: [label],
+            });
