@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "build": "npm run check && vite build",
+    "lint": "eslint . --max-warnings 0",
+    "lint:check": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint:check",
     "preview": "vite preview"
   },
   "dependencies": {

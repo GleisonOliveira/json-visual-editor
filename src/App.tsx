@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { startTransition, useEffect, useMemo, useState } from 'react'
 import {
   Alert,
   Button,
@@ -25,48 +25,28 @@ import { z } from 'zod'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
 import { lightTheme, darkTheme, codeMirrorLightTheme, codeMirrorDarkTheme, codeMirrorLightSyntax, codeMirrorDarkSyntax } from './theme'
+import type { JsonValue, JsonObject, JsonArray, NodeKind, NodeTarget, DndPayload, PalettePayload, InsertValueOpts, BuildDefaultValueOpts, FieldType, NullableFieldType } from './types'
 
-type JsonValue = any
-type JsonObject = Record<string, any>
-type JsonArray = any[]
-
-type NodeKind = 'object' | 'array' | 'value'
-
-type NodeTarget = {
-  label: string
-  path: Array<string | number>
-  kind: NodeKind
-}
-
-
-type DndPayload = {
-  fromPath: Array<string | number>
-  fromKey?: string
-} | {
-  fromPalette: true
-  paletteType: string
-}
-
-function isPalettePayload(p: DndPayload): p is { fromPalette: true; paletteType: string } {
+function isPalettePayload(p: DndPayload): p is PalettePayload {
   return 'fromPalette' in p && p.fromPalette === true
 }
 
 function getAtPath(root: JsonValue, path: Array<string | number>): JsonValue {
-  let cur = root
-  for (const seg of path) cur = cur[seg]
+  let cur: JsonValue = root
+  for (const seg of path) cur = (cur as JsonObject)[seg as string]
   return cur
 }
 
 function removeAtPath(root: JsonValue, path: Array<string | number>): JsonValue {
   if (path.length === 0) return root
-  return setAtPath(root, path.slice(0, -1), (parent: any) => {
+  return setAtPath(root, path.slice(0, -1), (parent: JsonValue) => {
     const key = path[path.length - 1]
     if (Array.isArray(parent)) {
       const copy = [...parent]
       copy.splice(key as number, 1)
       return copy
     } else {
-      const copy = { ...parent }
+      const copy = { ...(parent as JsonObject) }
       delete copy[key as string]
       return copy
     }
@@ -81,7 +61,7 @@ function insertAtPath(
   originalKey?: string,
   insertAfter?: boolean
 ): JsonValue {
-  return setAtPath(root, parentPath, (parent: any) => {
+  return setAtPath(root, parentPath, (parent: JsonValue) => {
     if (Array.isArray(parent)) {
       const copy = [...parent]
       let idx = key === null ? copy.length : (key as number)
@@ -89,14 +69,15 @@ function insertAtPath(
       copy.splice(idx, 0, value)
       return copy
     } else {
-      const wantedKey: string = originalKey ?? `field${Object.keys(parent).length}`
-      const finalKey = (wantedKey in parent)
-        ? `${wantedKey}_${Object.keys(parent).length}`
+      const obj = parent as JsonObject
+      const wantedKey: string = originalKey ?? `field${Object.keys(obj).length}`
+      const finalKey = (wantedKey in obj)
+        ? `${wantedKey}_${Object.keys(obj).length}`
         : wantedKey
-      const entries = Object.entries(parent)
+      const entries = Object.entries(obj)
       if (key !== null) {
         const toIdx = entries.findIndex(([k]) => k === (key as string))
-        if (toIdx < 0) return { ...parent, [finalKey]: value }
+        if (toIdx < 0) return { ...obj, [finalKey]: value }
         entries.splice(insertAfter ? toIdx + 1 : toIdx, 0, [finalKey, value])
       } else {
         entries.push([finalKey, value])
@@ -135,8 +116,8 @@ function moveNode(
   const movingDown = sameParent && toKey !== null && (
     typeof toKey === 'number'
       ? (fromSlot as number) < (toKey as number)
-      : Object.keys(getAtPath(root, toParentPath)).indexOf(fromSlot as string) <
-        Object.keys(getAtPath(root, toParentPath)).indexOf(toKey as string)
+      : Object.keys(getAtPath(root, toParentPath) as JsonObject).indexOf(fromSlot as string) <
+        Object.keys(getAtPath(root, toParentPath) as JsonObject).indexOf(toKey as string)
   )
   // For arrays moving within same parent, toKey already accounts for pre-removal position;
   // after removing the item, target index shifts down by 1 when moving forward — but we use
@@ -166,32 +147,25 @@ const isArray = (v: unknown): v is JsonArray => Array.isArray(v)
 function setAtPath(
   root: JsonValue,
   path: Array<string | number>,
-  updater: (node: any) => any
+  updater: (node: JsonValue) => JsonValue
 ): JsonValue {
-  const clone = structuredClone(root) as any
+  const clone = structuredClone(root)
   if (path.length === 0) {
     return updater(clone)
   }
-  let cur = clone
+  let cur = clone as JsonObject | JsonArray
   for (let i = 0; i < path.length; i++) {
     const seg = path[i]
     if (i === path.length - 1) {
-      cur[seg as any] = updater(cur[seg as any])
+      (cur as JsonObject)[seg as string] = updater((cur as JsonObject)[seg as string])
     } else {
-      cur = cur[seg as any]
+      cur = (cur as JsonObject)[seg as string] as JsonObject | JsonArray
     }
   }
   return clone
 }
 
-function buildDefaultValue(opts: {
-  type: string
-  name: string
-  valueText: string
-  valueNumber: number
-  valueBoolean: boolean
-  isNull: boolean
-}): JsonValue {
+function buildDefaultValue(opts: BuildDefaultValueOpts): JsonValue {
   if (opts.isNull) return null
   switch (opts.type) {
     case 'string':
@@ -229,12 +203,7 @@ function applyInsert(
   target: NodeTarget,
   name: string,
   type: string,
-  insertValue: {
-    valueText: string
-    valueNumber: number
-    valueBoolean: boolean
-    isNull: boolean
-  }
+  insertValue: InsertValueOpts
 ): JsonValue {
   const cleanName = (name ?? '').trim()
   const valueToInsert = buildDefaultValue({
@@ -247,16 +216,16 @@ function applyInsert(
   })
 
   if (target.kind === 'object') {
-    return setAtPath(root, target.path, (obj: any) => {
+    return setAtPath(root, target.path, (obj: JsonValue) => {
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-        obj[cleanName || 'newField'] = valueToInsert
+        (obj as JsonObject)[cleanName || 'newField'] = valueToInsert
       }
       return obj
     })
   }
 
   if (target.kind === 'array') {
-    return setAtPath(root, target.path, (arr: any) => {
+    return setAtPath(root, target.path, (arr: JsonValue) => {
       if (Array.isArray(arr)) arr.push(valueToInsert)
       return arr
     })
@@ -268,7 +237,7 @@ function applyInsert(
 function updatePrimitive(
   root: JsonValue,
   path: Array<string | number>,
-  next: any
+  next: JsonValue
 ): JsonValue {
   return setAtPath(root, path, () => next)
 }
@@ -278,14 +247,16 @@ function NumberField({ value, onChange }: { value: number; onChange: (n: number)
   const prevValueRef = React.useRef(value)
 
   // Sync only when external value changes (e.g. type switch), not during typing
-  if (prevValueRef.current !== value) {
-    prevValueRef.current = value
-    const cur = Number(text)
-    const typing = text.endsWith('.') || text.endsWith('-')
-    if (!typing && cur !== value) {
-      setText(String(value ?? 0))
+  React.useLayoutEffect(() => {
+    if (prevValueRef.current !== value) {
+      prevValueRef.current = value
+      const cur = Number(text)
+      const typing = text.endsWith('.') || text.endsWith('-')
+      if (!typing && cur !== value) {
+        startTransition(() => setText(String(value ?? 0)))
+      }
     }
-  }
+  }, [value, text])
 
   return (
     <TextField
@@ -391,7 +362,7 @@ function ObjectItem(props: {
   value: JsonValue
   parentPath: Array<string | number>
   obj: JsonObject
-  onUpdate: (path: Array<string | number>, next: any) => void
+  onUpdate: (path: Array<string | number>, next: JsonValue) => void
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
   onInsert: (paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => void
   collapsed: Set<string>
@@ -476,7 +447,7 @@ function ArrayItem(props: {
   item: JsonValue
   parentPath: Array<string | number>
   arr: JsonArray
-  onUpdate: (path: Array<string | number>, next: any) => void
+  onUpdate: (path: Array<string | number>, next: JsonValue) => void
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
   onInsert: (paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => void
   collapsed: Set<string>
@@ -543,7 +514,7 @@ function ArrayItem(props: {
 function NodeEditor(props: {
   value: JsonValue
   path: Array<string | number>
-  onUpdate: (path: Array<string | number>, next: any) => void
+  onUpdate: (path: Array<string | number>, next: JsonValue) => void
   onMove: (payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => void
   onInsert: (paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => void
   locked: boolean
@@ -553,11 +524,11 @@ function NodeEditor(props: {
   const toggleCollapse = (key: string) =>
     setCollapsed(prev => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      if (next.has(key)) { next.delete(key) } else { next.add(key) }
       return next
     })
 
-  const nodeType: 'null' | 'object' | 'array' | 'string' | 'number' | 'boolean' =
+  const nodeType: NullableFieldType =
     value === null
       ? 'null'
       : isArray(value)
@@ -786,9 +757,7 @@ export default function App() {
   const [jsonValue, setJsonValue] = useState<JsonValue>(() => ({}))
 
   const [fieldName, setFieldName] = useState('newField')
-  const [fieldType, setFieldType] = useState<'string' | 'number' | 'boolean' | 'object' | 'array'>(
-    'string'
-  )
+  const [fieldType, setFieldType] = useState<FieldType>('string')
   const [targetLabel, setTargetLabel] = useState<string>('Início')
   const [nameError, setNameError] = useState<string | null>(null)
   const [valueError, setValueError] = useState<string | null>(null)
@@ -822,14 +791,14 @@ export default function App() {
 
   useEffect(() => {
     if (!targets.find((t) => t.label === targetLabel)) {
-      setTargetLabel(targets[0]?.label ?? 'Início')
+      startTransition(() => setTargetLabel(targets[0]?.label ?? 'Início'))
     }
-  }, [targets])
+  }, [targets, targetLabel])
 
   // If the parent is an array, the "Nome do campo" is not used.
   // Clear it so the UI reflects that it's inactive.
   useEffect(() => {
-    if (selectedTarget?.kind === 'array') setFieldName('')
+    if (selectedTarget?.kind === 'array') startTransition(() => setFieldName(''))
   }, [selectedTarget?.kind])
 
   const onAdd = () => {
