@@ -1,5 +1,5 @@
 import { Box, Button, Card, CardContent, CardHeader, Typography } from '@mui/material'
-import { Pencil, Copy, X, CheckCheck } from 'lucide-react'
+import { Pencil, Copy, X, CheckCheck, Download } from 'lucide-react'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
 import { useUiStore } from '../../store/uiStore'
@@ -76,6 +76,23 @@ export function JsonPanel() {
             >
               Copiar minificado
             </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Download size={14} />}
+              onClick={() => {
+                const blob = new Blob([jsonStr], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = 'data.json'
+                a.click()
+                URL.revokeObjectURL(url)
+                setToast({ msg: 'JSON baixado com sucesso!', severity: 'success' })
+              }}
+            >
+              Baixar
+            </Button>
           </Box>
         )}
 
@@ -84,6 +101,7 @@ export function JsonPanel() {
             <CodeMirror
               value={editingText}
               theme="none"
+              basicSetup={{ drawSelection: false }}
               extensions={[json(), cmTheme, cmSyntax]}
               onChange={(val) => { setEditingText(val); setEditError(null) }}
               style={{
@@ -103,6 +121,7 @@ export function JsonPanel() {
           <CodeMirror
             value={jsonStr}
             theme="none"
+            basicSetup={{ drawSelection: false }}
             extensions={[json(), cmTheme, cmSyntax]}
             editable={false}
             style={{ fontSize: 14, textAlign: 'left', border: '1px solid rgba(0,0,0,0.23)', borderRadius: 4, minHeight: 300 }}

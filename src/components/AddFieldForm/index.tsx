@@ -27,6 +27,7 @@ export function AddFieldForm() {
   } = useUiStore()
 
   const { jsonValue, handleApplyInsert } = useJsonStore()
+  const { expandPath } = useUiStore()
 
   const targets = useMemo(() => enumerateTargets(jsonValue ?? {}), [jsonValue])
 
@@ -90,6 +91,7 @@ export function AddFieldForm() {
       valueBoolean,
       isNull: valueIsNull,
     })
+    expandPath(selectedTarget.path)
   }
 
   return (

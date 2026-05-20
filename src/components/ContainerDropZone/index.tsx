@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { Box, Typography } from '@mui/material'
-import type { DndPayload } from '../../types'
+import type { DndPayload, JsonValue } from '../../types'
 import { isPalettePayload, isAncestorOrEqual } from '../../lib/jsonUtils'
 import { useJsonStore } from '../../store/jsonStore'
+import { useUiStore } from '../../store/uiStore'
 
 export function ContainerDropZone(props: {
   parentPath: Array<string | number>
@@ -11,6 +12,7 @@ export function ContainerDropZone(props: {
 }) {
   const { parentPath, locked } = props
   const { handleMove, handleInsert } = useJsonStore()
+  const { expandPath } = useUiStore()
   const [isOver, setIsOver] = useState(false)
   const depth = React.useRef(0)
 
@@ -26,7 +28,17 @@ export function ContainerDropZone(props: {
         const raw = e.dataTransfer.getData('application/jsonve-dnd')
         if (!raw) return
         const payload = JSON.parse(raw) as DndPayload
-        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, null); return }
+        if (isPalettePayload(payload)) {
+          handleInsert(payload.paletteType, parentPath, null)
+          const newJson = useJsonStore.getState().jsonValue
+          let node: JsonValue = newJson
+          for (const seg of parentPath) node = (node as Record<string | number, JsonValue>)[seg]
+          let newKey: string | number
+          if (Array.isArray(node)) newKey = node.length - 1
+          else newKey = Object.keys(node as object).at(-1)!
+          expandPath([...parentPath, newKey])
+          return
+        }
         if (isAncestorOrEqual(payload.fromPath, parentPath)) return
         handleMove(payload, parentPath, null)
       }}
