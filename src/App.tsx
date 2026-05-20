@@ -20,7 +20,7 @@ import {
   Box,
 } from '@mui/material'
 import { ThemeProvider, CssBaseline } from '@mui/material'
-import { Trash2, GripVertical, ChevronDown, ChevronRight, Type, Hash, ToggleLeft, Braces, List, Ban, Pencil, X, CheckCheck, Sun, Moon } from 'lucide-react'
+import { Trash2, GripVertical, ChevronDown, ChevronRight, Type, Hash, ToggleLeft, Braces, List, Ban, Pencil, X, CheckCheck, Sun, Moon, Copy } from 'lucide-react'
 import { z } from 'zod'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
@@ -1205,7 +1205,7 @@ export default function App() {
                   </Button>
                 </Box>
               ) : (
-                <Box sx={{ mb: 1.5 }}>
+                <Box sx={{ mb: 1.5, display: 'flex', gap: 1, justifyContent: 'center' }}>
                   <Button
                     size="small"
                     variant="outlined"
@@ -1217,6 +1217,18 @@ export default function App() {
                     }}
                   >
                     Editar JSON
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Copy size={14} />}
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(parsed, null, 2))
+                        .then(() => setToast({ msg: 'JSON copiado para o clipboard!', severity: 'success' }))
+                        .catch(() => setToast({ msg: 'Falha ao copiar o JSON.', severity: 'error' }))
+                    }}
+                  >
+                    Copiar
                   </Button>
                 </Box>
               )}
@@ -1232,7 +1244,6 @@ export default function App() {
                       textAlign: 'left',
                       border: editError ? '2px solid #d32f2f' : '1px solid rgba(0,0,0,0.23)',
                       borderRadius: 4,
-                      minHeight: 300,
                     }}
                   />
                   {editError && (
