@@ -366,7 +366,6 @@ function ContainerDropZone(props: {
         onMove(payload, parentPath, null)
       }}
       sx={{
-        mt: 0.5,
         height: 36,
         borderRadius: 1,
         border: '2px dashed',
@@ -722,7 +721,7 @@ function NodeEditor(props: {
     return (
       <Box sx={{ mt: 1 }}>
         {hasComplex && (
-          <Box sx={{ display: 'flex', gap: 1, mb: 1.5, justifyContent: 'flex-end' }}>
+          <Box sx={{ display: 'flex', mb: 1.5, justifyContent: 'flex-end' }}>
             <Button
               variant="outlined"
               size="small"
@@ -1048,8 +1047,8 @@ export default function App() {
 
                 </Grid>
 
-                <Grid size={12} sx={{ display: { xs: 'none', md: 'block' } }}>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center' }}>
+                <Grid size={12} sx={{ display: { xs: 'none', md: 'block' }, pt: { md: '0 !important' } }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', mb: 1.5 }}>
                     {([
                       { type: 'string', icon: <Type size={14} /> },
                       { type: 'number', icon: <Hash size={14} /> },
@@ -1075,7 +1074,7 @@ export default function App() {
                     ))}
                   </Box>
                 </Grid>
-                <Grid size={12}>
+                <Grid size={12} sx={{ pt: '0 !important' }}>
                   <NodeEditor
                     value={parsed}
                     path={[]}
