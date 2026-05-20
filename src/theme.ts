@@ -100,8 +100,8 @@ export const codeMirrorLightTheme = EditorView.theme(
     },
     '.cm-activeLineGutter': { backgroundColor: '#e2e2e8' },
     '.cm-activeLine': { backgroundColor: 'rgba(170,59,255,0.06)' },
-    '.cm-selectionBackground, ::selection': {
-      backgroundColor: 'rgba(170,59,255,0.18) !important',
+    '.cm-selectionBackground': {
+      backgroundColor: 'rgba(170,59,255,0.25) !important',
     },
     '.cm-matchingBracket': { backgroundColor: 'rgba(170,59,255,0.2)', outline: 'none' },
   },
@@ -126,8 +126,8 @@ export const codeMirrorDarkTheme = EditorView.theme(
     },
     '.cm-activeLineGutter': { backgroundColor: '#1f2030' },
     '.cm-activeLine': { backgroundColor: 'rgba(192,132,252,0.08)' },
-    '.cm-selectionBackground, ::selection': {
-      backgroundColor: 'rgba(192,132,252,0.22) !important',
+    '.cm-selectionBackground': {
+      backgroundColor: 'rgba(192,132,252,0.3) !important',
     },
     '.cm-matchingBracket': { backgroundColor: 'rgba(192,132,252,0.25)', outline: 'none' },
   },

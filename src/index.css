@@ -66,6 +66,16 @@ body {
   margin: 0;
 }
 
+.cm-editor ::selection {
+  background-color: rgba(170, 59, 255, 0.25) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cm-editor ::selection {
+    background-color: rgba(192, 132, 252, 0.3) !important;
+  }
+}
+
 h1,
 h2 {
   font-family: var(--heading);

@@ -17,6 +17,23 @@ export const useUiStore = create<UiStore>((set) => ({
       return { mode: next }
     }),
 
+  expanded: new Set<string>(),
+  toggleExpand: (key) =>
+    set((s) => {
+      const next = new Set(s.expanded)
+      if (next.has(key)) { next.delete(key) } else { next.add(key) }
+      return { expanded: next }
+    }),
+  expandPath: (path) =>
+    set((s) => {
+      const key = JSON.stringify(path)
+      const next = new Set(s.expanded)
+      next.add(key)
+      return { expanded: next }
+    }),
+  collapseAll: () => set({ expanded: new Set<string>() }),
+  expandAll: (allKeys) => set({ expanded: new Set(allKeys) }),
+
   editingJson: false,
   editingText: '',
   editError: null,
