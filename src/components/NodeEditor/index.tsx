@@ -23,21 +23,22 @@ import { isPalettePayload, isAncestorOrEqual } from '../../lib/jsonUtils'
 
 // ─── helpers shared locally ─────────────────────────────────────────────────
 
-const isComplexValue = (v: JsonValue) =>
+const isComplexValue = (v: JsonValue): boolean =>
   Array.isArray(v) || (typeof v === 'object' && v !== null)
 
-function expandInserted(parentPath: Array<string | number>, expandPathFn: (p: Array<string | number>) => void) {
+function expandInserted(parentPath: Array<string | number>, expandPathFn: (p: Array<string | number>) => void): void {
   const newJson = useJsonStore.getState().jsonValue
   let node: JsonValue = newJson
-  for (const seg of parentPath) node = (node as Record<string | number, JsonValue>)[seg]
+  for (const seg of parentPath) node = (node as Record<string | number, JsonValue>)[seg] as JsonValue
   let newKey: string | number
   if (Array.isArray(node)) newKey = node.length - 1
   else newKey = Object.keys(node as object).at(-1)!
   expandPathFn([...parentPath, newKey])
 }
 
-function collectComplexKeys(v: JsonValue, parentPath: Array<string | number>): string[] {
+function collectComplexKeys(v: JsonValue, parentPath: Array<string | number>): Array<string> {
   const keys: string[] = []
+
   if (Array.isArray(v)) {
     v.forEach((item, i) => {
       if (isComplexValue(item)) {
@@ -53,6 +54,7 @@ function collectComplexKeys(v: JsonValue, parentPath: Array<string | number>): s
       }
     })
   }
+
   return keys
 }
 
@@ -68,7 +70,7 @@ function ObjectItem(props: {
   expandPath: (path: Array<string | number>) => void
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
-}) {
+}): React.JSX.Element {
   const { objKey: k, value: v, parentPath, obj, expanded, toggleExpand, expandPath, renderChildren, locked } = props
   const { handleUpdate, handleMove, handleInsert } = useJsonStore()
   const itemPath = [...parentPath, k]
@@ -78,7 +80,10 @@ function ObjectItem(props: {
   return (
     <Box
       {...(!locked ? dropZoneProps((payload) => {
-        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, k); expandInserted(parentPath, expandPath); return }
+        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, k); expandInserted(parentPath, expandPath);
+
+ return }
+
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         handleMove(payload, parentPath, k)
       }) : {})}
@@ -117,7 +122,7 @@ function ObjectItem(props: {
             const nextKey = e.target.value.trim()
             if (!nextKey || nextKey === k) return
             const o = { ...obj }
-            o[nextKey] = o[k]
+            o[nextKey] = o[k] as JsonValue
             delete o[k]
             handleUpdate(parentPath, o)
           }}
@@ -153,7 +158,7 @@ function ArrayItem(props: {
   expandPath: (path: Array<string | number>) => void
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
-}) {
+}): React.JSX.Element {
   const { index: i, item, parentPath, arr, expanded, toggleExpand, expandPath, renderChildren, locked } = props
   const { handleUpdate, handleMove, handleInsert } = useJsonStore()
   const itemPath = [...parentPath, i]
@@ -163,7 +168,10 @@ function ArrayItem(props: {
   return (
     <Box
       {...(!locked ? dropZoneProps((payload) => {
-        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, i); expandInserted(parentPath, expandPath); return }
+        if (isPalettePayload(payload)) { handleInsert(payload.paletteType, parentPath, i); expandInserted(parentPath, expandPath);
+
+ return }
+
         if (isAncestorOrEqual(payload.fromPath, itemPath)) return
         handleMove(payload, parentPath, i)
       }) : {})}
@@ -212,7 +220,7 @@ function ArrayItem(props: {
 
 // ─── InlineNodeEditor (non-root) ─────────────────────────────────────────────
 
-function InlineNodeEditor({ value, path, locked }: { value: JsonValue; path: Array<string | number>; locked: boolean }) {
+function InlineNodeEditor({ value, path, locked }: { value: JsonValue; path: Array<string | number>; locked: boolean }): React.JSX.Element {
   const { handleUpdate } = useJsonStore()
 
   const nodeType: NullableFieldType =
@@ -224,7 +232,7 @@ function InlineNodeEditor({ value, path, locked }: { value: JsonValue; path: Arr
     : typeof value === 'boolean' ? 'boolean'
     : 'null'
 
-  const setNodeType = (nextType: NullableFieldType) => {
+  const setNodeType = (nextType: NullableFieldType): void => {
     if (nextType === nodeType) return
     const next = buildDefaultValue({
       type: nextType === 'null' ? 'string' : nextType,
@@ -272,6 +280,7 @@ function InlineNodeEditor({ value, path, locked }: { value: JsonValue; path: Arr
           </Select>
         </FormControl>
       ) : null
+
     return <>{TypeSelect}{ValueInput}</>
   }
 
@@ -280,7 +289,7 @@ function InlineNodeEditor({ value, path, locked }: { value: JsonValue; path: Arr
 
 // ─── NodeEditor (root) ───────────────────────────────────────────────────────
 
-export function NodeEditor({ locked }: { locked: boolean }) {
+export function NodeEditor({ locked }: { locked: boolean }): React.JSX.Element {
   const { jsonValue, handleUpdate } = useJsonStore()
   const { expanded, toggleExpand, expandPath, collapseAll, expandAll } = useUiStore()
   const value = jsonValue
@@ -295,7 +304,7 @@ export function NodeEditor({ locked }: { locked: boolean }) {
     : typeof value === 'boolean' ? 'boolean'
     : 'null'
 
-  const setNodeType = (nextType: NullableFieldType) => {
+  const setNodeType = (nextType: NullableFieldType): void => {
     if (nextType === nodeType) return
     const next = buildDefaultValue({
       type: nextType === 'null' ? 'string' : nextType,
@@ -322,24 +331,28 @@ export function NodeEditor({ locked }: { locked: boolean }) {
     </FormControl>
   )
 
-  const renderChildren = (v: JsonValue, parentPath: Array<string | number>): React.ReactNode => {
+  const renderChildren = (v: JsonValue, parentPath: Array<string | number>): React.ReactNode | null => {
     if (Array.isArray(v)) {
       if (v.length === 0) return null
+
       return <>
         {v.map((item, i) => (
           <ArrayItem key={i} index={i} item={item} parentPath={parentPath} arr={v} expanded={expanded} toggleExpand={toggleExpand} expandPath={expandPath} renderChildren={renderChildren} locked={locked} />
         ))}
       </>
     }
+
     if (typeof v === 'object' && v !== null) {
       const entries = Object.entries(v as JsonObject)
       if (entries.length === 0) return null
+
       return <>
         {entries.map(([k, child]) => (
           <ObjectItem key={k} objKey={k} value={child} parentPath={parentPath} obj={v as JsonObject} expanded={expanded} toggleExpand={toggleExpand} expandPath={expandPath} renderChildren={renderChildren} locked={locked} />
         ))}
       </>
     }
+
     return null
   }
 
@@ -358,6 +371,7 @@ export function NodeEditor({ locked }: { locked: boolean }) {
           </Select>
         </FormControl>
       ) : null
+
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {TypeSelect}
@@ -368,6 +382,7 @@ export function NodeEditor({ locked }: { locked: boolean }) {
 
   const allComplexKeys = collectComplexKeys(value, path)
   const hasComplex = allComplexKeys.length > 0
+
   return (
     <Box>
       {hasComplex && (

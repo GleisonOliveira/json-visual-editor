@@ -1,3 +1,4 @@
+import type React from 'react'
 import { Box, Button, Card, CardContent, CardHeader, Grid } from '@mui/material'
 import { Type, Hash, ToggleLeft, Braces, List, Ban } from 'lucide-react'
 import { useUiStore } from '../../store/uiStore'
@@ -13,7 +14,7 @@ const PALETTE_ITEMS = [
   { type: 'null', icon: <Ban size={14} /> },
 ]
 
-export function VisualEditor() {
+export function VisualEditor(): React.JSX.Element {
   const { editingJson } = useUiStore()
 
   return (

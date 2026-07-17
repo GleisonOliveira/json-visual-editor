@@ -81,6 +81,19 @@ Props são aceitáveis apenas quando:
 
 Nunca passe actions da store como props — consuma a store diretamente no componente que precisa da action.
 
+## Convenções de documentação
+
+Todo componente, classe, função e tipo/interface **deve** ter um comentário JSDoc explicando **como** é usado e **por que** existe. Regras:
+
+- **Componentes** (`Foo.tsx`): JSDoc no componente descrevendo seu papel na hierarquia de design atômico, o que renderiza e quando usá-lo.
+- **Classes** (services): JSDoc na classe explicando sua responsabilidade, e JSDoc em cada método público explicando parâmetros, valor de retorno e contexto de uso.
+- **Funções** (hooks, composables, utilitários): JSDoc descrevendo propósito, parâmetros, valor de retorno e efeitos colaterais (se houver).
+- **Types/Interfaces**: JSDoc explicando o que o tipo representa e onde é usado.
+- **Constants/Symbols**: JSDoc explicando o valor e seu papel (ex: tokens de DI).
+- Comentários devem ser em **inglês**.
+- Usar formato JSDoc `/** ... */` (não comentários `//`).
+- **Não** documentar getters/setters triviais ou one-liners óbvios — focar no **porquê**, não no **o quê**.
+
 ## Convenções de store
 
 ### Stores concisas

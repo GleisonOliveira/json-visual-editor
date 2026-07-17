@@ -11,7 +11,8 @@ export const isArray = (v: unknown): v is JsonArray => Array.isArray(v)
 
 export function getAtPath(root: JsonValue, path: Array<string | number>): JsonValue {
   let cur: JsonValue = root
-  for (const seg of path) cur = (cur as JsonObject)[seg as string]
+  for (const seg of path) cur = (cur as JsonObject)[seg as string] as JsonValue
+
   return cur
 }
 
@@ -23,28 +24,35 @@ export function setAtPath(
   const clone = structuredClone(root)
   if (path.length === 0) return updater(clone)
   let cur = clone as JsonObject | JsonArray
+
   for (let i = 0; i < path.length; i++) {
     const seg = path[i]
+
     if (i === path.length - 1) {
-      (cur as JsonObject)[seg as string] = updater((cur as JsonObject)[seg as string])
+      (cur as JsonObject)[seg as string] = updater((cur as JsonObject)[seg as string] as JsonValue)
     } else {
       cur = (cur as JsonObject)[seg as string] as JsonObject | JsonArray
     }
   }
+
   return clone
 }
 
 export function removeAtPath(root: JsonValue, path: Array<string | number>): JsonValue {
   if (path.length === 0) return root
+
   return setAtPath(root, path.slice(0, -1), (parent: JsonValue) => {
     const key = path[path.length - 1]
+
     if (Array.isArray(parent)) {
       const copy = [...parent]
       copy.splice(key as number, 1)
+
       return copy
     } else {
       const copy = { ...(parent as JsonObject) }
       delete copy[key as string]
+
       return copy
     }
   })
@@ -64,12 +72,14 @@ export function insertAtPath(
       let idx = key === null ? copy.length : (key as number)
       if (insertAfter && key !== null) idx = (key as number) + 1
       copy.splice(idx, 0, value)
+
       return copy
     } else {
       const obj = parent as JsonObject
       const wantedKey: string = originalKey ?? `field${Object.keys(obj).length}`
       const finalKey = (wantedKey in obj) ? `${wantedKey}_${Object.keys(obj).length}` : wantedKey
       const entries = Object.entries(obj)
+
       if (key !== null) {
         const toIdx = entries.findIndex(([k]) => k === (key as string))
         if (toIdx < 0) return { ...obj, [finalKey]: value }
@@ -77,6 +87,7 @@ export function insertAtPath(
       } else {
         entries.push([finalKey, value])
       }
+
       return Object.fromEntries(entries)
     }
   })
@@ -84,11 +95,13 @@ export function insertAtPath(
 
 export function isAncestorOrEqual(candidateAncestor: Array<string | number>, path: Array<string | number>): boolean {
   if (candidateAncestor.length > path.length) return false
+
   return candidateAncestor.every((seg, i) => seg === path[i])
 }
 
 export function buildDefaultValue(opts: BuildDefaultValueOpts): JsonValue {
   if (opts.isNull) return null
+
   switch (opts.type) {
     case 'string': return opts.valueText ?? opts.name ?? 'item'
     case 'number': return Number.isFinite(opts.valueNumber) ? opts.valueNumber : 0
@@ -123,10 +136,13 @@ export function moveNode(
         Object.keys(getAtPath(root, toParentPath) as JsonObject).indexOf(toKey as string)
   )
   let adjustedKey = toKey
+
   if (sameParent && toKey !== null && typeof toKey === 'number' && movingDown) {
     adjustedKey = (toKey as number) - 1
   }
+
   const afterRemove = removeAtPath(root, fromPath)
+
   return insertAtPath(afterRemove, toParentPath, adjustedKey, value, fromKey, movingDown)
 }
 
@@ -137,6 +153,7 @@ export function insertFromPalette(
   toKey: string | number | null
 ): JsonValue {
   const value = buildDefaultValue({ type: paletteType, name: 'newField', valueText: '', valueNumber: 0, valueBoolean: false, isNull: paletteType === 'null' })
+
   return insertAtPath(root, toParentPath, toKey, value, toKey === null ? 'newField' : undefined)
 }
 
@@ -150,16 +167,20 @@ export function updatePrimitive(
 
 export function enumerateTargets(root: JsonValue): NodeTarget[] {
   const out: NodeTarget[] = []
-  const walk = (value: JsonValue, path: Array<string | number>, label: string) => {
+
+  const walk = (value: JsonValue, path: Array<string | number>, label: string): void => {
     const kind: NodeKind = isArray(value) ? 'array' : isObject(value) ? 'object' : 'value'
     if (kind !== 'value') out.push({ label, path: [...path], kind })
+
     if (isObject(value)) {
       for (const [k, v] of Object.entries(value)) walk(v, [...path, k], `${label}.${k}`)
     } else if (isArray(value)) {
-      for (let i = 0; i < value.length; i++) walk(value[i], [...path, i], `${label}[${i}]`)
+      for (let i = 0; i < value.length; i++) walk(value[i] as JsonValue, [...path, i], `${label}[${i}]`)
     }
   }
+
   walk(root, [], 'Início')
+
   return out
 }
 
@@ -185,6 +206,7 @@ export function applyInsert(
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
         (obj as JsonObject)[cleanName || 'newField'] = valueToInsert
       }
+
       return obj
     })
   }
@@ -192,6 +214,7 @@ export function applyInsert(
   if (target.kind === 'array') {
     return setAtPath(root, target.path, (arr: JsonValue) => {
       if (Array.isArray(arr)) arr.push(valueToInsert)
+
       return arr
     })
   }

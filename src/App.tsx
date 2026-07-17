@@ -1,3 +1,4 @@
+import type React from 'react'
 import { Alert, Box, Grid, Snackbar } from '@mui/material'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { lightTheme, darkTheme } from './theme'
@@ -6,7 +7,7 @@ import { TopBar } from './components/TopBar'
 import { VisualEditor } from './components/VisualEditor'
 import { JsonPanel } from './components/JsonPanel'
 
-export default function App() {
+export default function App(): React.JSX.Element {
   const { mode, toast, setToast } = useUiStore()
   const muiTheme = mode === 'dark' ? darkTheme : lightTheme
 

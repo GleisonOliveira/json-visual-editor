@@ -1,3 +1,4 @@
+import type React from 'react'
 import { startTransition, useEffect, useMemo } from 'react'
 import {
 Button,
@@ -17,7 +18,7 @@ import { useJsonStore } from '../../store/jsonStore'
 import { enumerateTargets } from '../../lib/jsonUtils'
 import type { FieldType } from '../../types'
 
-export function AddFieldForm() {
+export function AddFieldForm(): React.JSX.Element {
   const {
     fieldName, fieldType, targetLabel, nameError, valueError,
     valueText, valueNumberText, valueBoolean, valueIsNull,
@@ -48,10 +49,11 @@ export function AddFieldForm() {
 
   const valueNumber = useMemo(() => {
     const n = Number(valueNumberText)
+
     return Number.isFinite(n) ? n : 0
   }, [valueNumberText])
 
-  const onAdd = () => {
+  const onAdd = (): void => {
     if (!selectedTarget) return
     setNameError(null)
     setValueError(null)
@@ -76,10 +78,12 @@ export function AddFieldForm() {
       })
 
     const result = schema.safeParse({ name: fieldName, type: fieldType, isNull: valueIsNull, valueText, valueNumberText, valueBoolean })
+
     if (!result.success) {
       const msg = result.error.issues[0]?.message ?? 'Dados inválidos.'
       if (msg === 'Informe um nome.') setNameError(msg)
       else setValueError(msg)
+
       return
     }
 
@@ -128,9 +132,12 @@ export function AddFieldForm() {
                 const nextType = e.target.value as FieldType
                 setFieldType(nextType)
                 setValueIsNull(false)
+
                 if (nextType === 'string') { setValueText('item'); setValueIsNull(false) }
+
                 if (nextType === 'boolean') setValueBoolean(false)
                 if (nextType === 'number') setValueNumberText('0')
+
                 if (nextType === 'object' || nextType === 'array') {
                   setValueText('item'); setValueNumberText('0'); setValueBoolean(false)
                 }

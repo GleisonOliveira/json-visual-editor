@@ -153,4 +153,5 @@ const darkHighlight = HighlightStyle.define([
 ])
 
 export const codeMirrorLightSyntax = syntaxHighlighting(lightHighlight)
+
 export const codeMirrorDarkSyntax = syntaxHighlighting(darkHighlight)

@@ -1,3 +1,4 @@
+import type React from 'react'
 import { Box, Button, Card, CardContent, CardHeader, IconButton, Tooltip, Typography, useMediaQuery, useTheme } from '@mui/material'
 import { Pencil, Copy, X, CheckCheck, Download } from 'lucide-react'
 import CodeMirror from '@uiw/react-codemirror'
@@ -5,8 +6,9 @@ import { json } from '@codemirror/lang-json'
 import { useUiStore } from '../../store/uiStore'
 import { useJsonStore } from '../../store/jsonStore'
 import { codeMirrorLightTheme, codeMirrorDarkTheme, codeMirrorLightSyntax, codeMirrorDarkSyntax } from '../../theme'
+import type { JsonValue } from '../../types'
 
-export function JsonPanel() {
+export function JsonPanel(): React.JSX.Element {
   const { mode, editingJson, editingText, editError, startEditing, cancelEditing, setEditingText, setEditError, setToast } = useUiStore()
   const { jsonValue, setJsonValue } = useJsonStore()
 
@@ -38,7 +40,7 @@ export function JsonPanel() {
                     color="success"
                     onClick={() => {
                       try {
-                        const parsed = JSON.parse(editingText)
+                        const parsed = JSON.parse(editingText) as JsonValue
                         setJsonValue(() => parsed)
                         cancelEditing()
                         setToast({ msg: 'JSON válido aplicado com sucesso.', severity: 'success' })
@@ -65,7 +67,7 @@ export function JsonPanel() {
                   startIcon={<CheckCheck size={14} />}
                   onClick={() => {
                     try {
-                      const parsed = JSON.parse(editingText)
+                      const parsed = JSON.parse(editingText) as JsonValue
                       setJsonValue(() => parsed)
                       cancelEditing()
                       setToast({ msg: 'JSON válido aplicado com sucesso.', severity: 'success' })

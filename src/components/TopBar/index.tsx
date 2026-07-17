@@ -1,8 +1,9 @@
+import type React from 'react'
 import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import { Braces, Sun, Moon } from 'lucide-react'
 import { useUiStore } from '../../store/uiStore'
 
-export function TopBar() {
+export function TopBar(): React.JSX.Element {
   const { mode, toggleMode } = useUiStore()
 
   return (

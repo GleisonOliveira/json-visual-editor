@@ -1,7 +1,7 @@
 import React, { startTransition, useState } from 'react'
 import { TextField } from '@mui/material'
 
-export function NumberField({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+export function NumberField({ value, onChange }: { value: number; onChange: (n: number) => void }): React.JSX.Element {
   const [text, setText] = useState(String(value ?? 0))
   const prevValueRef = React.useRef(value)
 
@@ -10,6 +10,7 @@ export function NumberField({ value, onChange }: { value: number; onChange: (n: 
       prevValueRef.current = value
       const cur = Number(text)
       const typing = text.endsWith('.') || text.endsWith('-')
+
       if (!typing && cur !== value) {
         startTransition(() => setText(String(value ?? 0)))
       }
@@ -26,6 +27,7 @@ export function NumberField({ value, onChange }: { value: number; onChange: (n: 
       onChange={(e) => setText(e.target.value)}
       onBlur={(e) => {
         const n = Number(e.target.value)
+
         if (Number.isFinite(n)) {
           onChange(n)
           setText(String(n))
