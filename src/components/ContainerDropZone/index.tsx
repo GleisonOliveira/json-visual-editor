@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import type { DndPayload, JsonValue } from '../../types'
-import { isPalettePayload, isAncestorOrEqual } from '../../lib/jsonUtils'
+import { JsonTreeService } from '../../services/JsonTreeService'
 import { useJsonStore } from '../../store/jsonStore'
 import { useUiStore } from '../../store/uiStore'
+
+const treeSvc = new JsonTreeService()
+const { isPalettePayload, isAncestorOrEqual } = treeSvc
 
 export function ContainerDropZone(props: {
   parentPath: Array<string | number>

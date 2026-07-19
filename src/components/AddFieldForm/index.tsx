@@ -15,8 +15,10 @@ Button,
 import { z } from 'zod'
 import { useUiStore } from '../../store/uiStore'
 import { useJsonStore } from '../../store/jsonStore'
-import { enumerateTargets } from '../../lib/jsonUtils'
+import { JsonTreeService } from '../../services/JsonTreeService'
 import type { FieldType } from '../../types'
+
+const treeSvc = new JsonTreeService()
 
 export function AddFieldForm(): React.JSX.Element {
   const {
@@ -30,7 +32,7 @@ export function AddFieldForm(): React.JSX.Element {
   const { jsonValue, handleApplyInsert } = useJsonStore()
   const { expandPath } = useUiStore()
 
-  const targets = useMemo(() => enumerateTargets(jsonValue ?? {}), [jsonValue])
+  const targets = useMemo(() => treeSvc.enumerateTargets(jsonValue ?? {}), [jsonValue])
 
   const selectedTarget = useMemo(
     () => targets.find((t) => t.label === targetLabel) ?? targets[0],

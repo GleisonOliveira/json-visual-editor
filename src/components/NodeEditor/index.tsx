@@ -13,18 +13,18 @@ import {
 import { Button } from '@mui/material'
 import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
 import type { JsonValue, JsonObject, JsonArray, NullableFieldType } from '../../types'
-import { isArray, isObject, buildDefaultValue } from '../../lib/jsonUtils'
 import { useJsonStore } from '../../store/jsonStore'
 import { useUiStore } from '../../store/uiStore'
 import { NumberField } from '../NumberField'
 import { ContainerDropZone } from '../ContainerDropZone'
 import { useDndItem } from '../../hooks/useDndItem'
-import { isPalettePayload, isAncestorOrEqual } from '../../lib/jsonUtils'
+import { JsonTreeService } from '../../services/JsonTreeService'
+import { JsonMutationService } from '../../services/JsonMutationService'
 
-// ─── helpers shared locally ─────────────────────────────────────────────────
-
-const isComplexValue = (v: JsonValue): boolean =>
-  Array.isArray(v) || (typeof v === 'object' && v !== null)
+const treeSvc = new JsonTreeService()
+const mutationSvc = new JsonMutationService(treeSvc)
+const { isArray, isObject, isComplexValue, isPalettePayload, isAncestorOrEqual } = treeSvc
+const { buildDefaultValue } = mutationSvc
 
 function expandInserted(parentPath: Array<string | number>, expandPathFn: (p: Array<string | number>) => void): void {
   const newJson = useJsonStore.getState().jsonValue

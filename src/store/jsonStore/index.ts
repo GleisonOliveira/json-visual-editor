@@ -1,16 +1,16 @@
 import { create } from 'zustand'
 import type { JsonStore } from './types'
-import { updatePrimitive, moveNode, insertFromPalette, applyInsert } from '../../lib/jsonUtils'
+import { jsonActions } from './actions'
 
 export const useJsonStore = create<JsonStore>((set) => ({
   jsonValue: {},
-  setJsonValue: (updater) => set((s) => ({ jsonValue: updater(s.jsonValue) })),
+  setJsonValue: (updater) => set((s) => ({ jsonValue: jsonActions.setJsonValue(s.jsonValue, updater) })),
   handleUpdate: (path, next) =>
-    set((s) => ({ jsonValue: updatePrimitive(s.jsonValue, path, next) })),
+    set((s) => ({ jsonValue: jsonActions.handleUpdate(s.jsonValue, path, next) })),
   handleMove: (payload, toParentPath, toKey) =>
-    set((s) => ({ jsonValue: moveNode(s.jsonValue, payload, toParentPath, toKey) })),
+    set((s) => ({ jsonValue: jsonActions.handleMove(s.jsonValue, payload, toParentPath, toKey) })),
   handleInsert: (paletteType, toParentPath, toKey) =>
-    set((s) => ({ jsonValue: insertFromPalette(s.jsonValue, paletteType, toParentPath, toKey) })),
+    set((s) => ({ jsonValue: jsonActions.handleInsert(s.jsonValue, paletteType, toParentPath, toKey) })),
   handleApplyInsert: (target, name, type, insertValue) =>
-    set((s) => ({ jsonValue: applyInsert(s.jsonValue, target, name, type, insertValue) })),
+    set((s) => ({ jsonValue: jsonActions.handleApplyInsert(s.jsonValue, target, name, type, insertValue) })),
 }))
