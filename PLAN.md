@@ -112,6 +112,7 @@ Every phase MUST pass these gates before proceeding:
 - [x] 0.5. Verify: `npm run test` runs (0 tests, clean baseline)
 - [x] 0.6. Verify: `npm run typecheck && npm run lint` still pass
 - [x] 0.7. Verify: `npm run build` still succeeds
+- [x] 0.8. Create a visual mermaid graph of 
 
 ### Acceptance Criteria
 - [x] `vitest.config.ts` exists and is correct
@@ -119,6 +120,31 @@ Every phase MUST pass these gates before proceeding:
 - [x] `npm run test` executes with 0 tests, exit code 0
 - [x] `npm run typecheck` passes
 - [x] `npm run lint` passes
+
+---
+
+## Phase 0: Flow Chart
+- Create a flowchart using Markdown and Mermaid.js. The flowchart must include all application paths, including both successful flows and error flows.
+- Add markers, classes, and visual styling hooks to the diagram elements to make them easy to style later.
+  - To discover the application's behavior, use the Playwright MCP to interact with https://jsonvisualeditor.com/. Explore the application in both desktop (expanded) and mobile layouts.
+  - Map the behavior of every button and interactive element, including:
+
+    - Click actions
+      - Drag-and-drop interactions
+      - Navigation between screens or states
+      - Success and failure scenarios
+      - Validation errors
+      - Conditional branches
+      - Modal dialogs, menus, and popovers (if present)
+- The resulting Mermaid flowchart should comprehensively document the application's behavior and all possible user interaction paths.
+- Save in doc folder
+
+### Acceptance Criteria
+- [] All the flows must be mapped
+- [] Mobile and desktop must be mapped
+- [] All buttons must be mapped
+- [] All actions must be mapped
+- [] File must be saved in doc folder
 
 ---
 
@@ -487,6 +513,7 @@ component-name/
 - [ ] 5.4. Create `docs/testing.md`: vitest setup, test conventions, how to write behavioral tests, renderWithProviders pattern
 - [ ] 5.5. Create `docs/services.md`: service classes, DI tokens, how to add new services, constructor injection pattern
 - [ ] 5.6. Create `docs/store.md`: store conventions, action splitting, domain separation, how to add new stores
+- [ ] 5.7. Update `doc/user-flows-mapping.md` with the new flows/components
 
 ### Acceptance Criteria
 - [ ] `AGENTS.md` is complete, accurate, in English
@@ -497,6 +524,7 @@ component-name/
 - [ ] `npm run typecheck` passes
 - [ ] `npm run lint` passes
 - [ ] `npm run build` passes
+- [ ] Validate `doc/user-flows-mapping.md` using playright mcp in the url `https://mermaid.live/edit` (past the content of chart into editor and validade if it`s parse correctly)
 
 ---
 
