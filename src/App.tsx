@@ -3,9 +3,9 @@ import { Alert, Box, Grid, Snackbar } from '@mui/material'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { lightTheme, darkTheme } from './theme'
 import { useUiStore } from './store/uiStore'
-import { TopBar } from './components/TopBar'
-import { VisualEditor } from './components/VisualEditor'
-import { JsonPanel } from './components/JsonPanel'
+import { TopBar } from './components/organisms/top-bar/TopBar'
+import { VisualEditor } from './components/organisms/visual-editor/VisualEditor'
+import { JsonPanel } from './components/organisms/json-panel/JsonPanel'
 
 export default function App(): React.JSX.Element {
   const { mode, toast, setToast } = useUiStore()

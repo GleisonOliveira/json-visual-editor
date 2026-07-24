@@ -347,36 +347,36 @@ component-name/
 
 ### Tasks
 
-- [ ] 4.1. Create `src/components/atoms/`, `molecules/`, `organisms/` directories
-- [ ] 4.2. Extract **TypeSelector** atom + test
+- [x] 4.1. Create `src/components/atoms/`, `molecules/`, `organisms/` directories
+- [x] 4.2. Extract **TypeSelector** atom + test
   - Test: renders current type from props
   - Test: onChange fires with new type
   - Test: disabled when locked=true
-- [ ] 4.3. Extract **ValueInput** atom + test
+- [x] 4.3. Extract **ValueInput** atom + test
   - Test: renders TextField for string type
   - Test: renders NumberField for number type
   - Test: renders Select for boolean type
   - Test: renders nothing for object/array types
   - Test: disabled when locked=true
   - Test: onChange fires with correct value
-- [ ] 4.4. Extract **PaletteButton** atom + test
+- [x] 4.4. Extract **PaletteButton** atom + test
   - Test: renders with correct icon and label
   - Test: draggable=true when editingJson=false
   - Test: draggable=false when editingJson=true
   - Test: disabled when editingJson=true
-- [ ] 4.5. Move **NumberField** + test
+- [x] 4.5. Move **NumberField** + test
   - Test: renders with initial value
   - Test: typing updates local text state
   - Test: blur commits numeric value
   - Test: blur with invalid input resets to 0
   - Test: typing "1." preserves mid-edit state
-- [ ] 4.6. Move **ContainerDropZone** + test
+- [x] 4.6. Move **ContainerDropZone** + test
   - Test: renders "Arraste itens para cá" text
   - Test: visual feedback on dragEnter (border color changes)
   - Test: palette drop inserts new field into store
   - Test: reorder drop moves node in store
   - Test: locked=true prevents drop
-- [ ] 4.7. Extract **ObjectItem** molecule + test
+- [x] 4.7. Extract **ObjectItem** molecule + test
   - Test: renders delete button, key input, type selector, value input
   - Test: delete button removes key from store
   - Test: key rename on blur updates store
@@ -384,20 +384,20 @@ component-name/
   - Test: expand button shows ChevronDown/ChevronRight based on state
   - Test: nested ContainerDropZone visible when expanded
   - Test: nested ContainerDropZone hidden when collapsed
-- [ ] 4.8. Extract **ArrayItem** molecule + test
+- [x] 4.8. Extract **ArrayItem** molecule + test
   - Test: renders delete button, index label, type selector, value input
   - Test: delete button removes item from store
   - Test: expand/collapse toggles children visibility
   - Test: nested ContainerDropZone visible when expanded
-- [ ] 4.9. Extract **InlineNodeEditor** molecule + test
+- [x] 4.9. Extract **InlineNodeEditor** molecule + test
   - Test: renders TypeSelector + ValueInput for leaf nodes (string/number/boolean/null)
   - Test: renders only TypeSelector for object/array nodes
   - Test: changing type converts node value in store
-- [ ] 4.10. Extract **PalettePanel** molecule + test
+- [x] 4.10. Extract **PalettePanel** molecule + test
   - Test: renders 6 palette buttons
   - Test: all buttons draggable when not editing
   - Test: all buttons disabled when editing
-- [ ] 4.11. Extract **JsonToolbar** molecule + test
+- [x] 4.11. Extract **JsonToolbar** molecule + test
   - Test: desktop shows full text buttons (Editar JSON, Copiar, Copiar minificado, Baixar)
   - Test: mobile shows icon-only buttons with tooltips
   - Test: editingJson=true shows Cancelar + Validar
@@ -409,7 +409,7 @@ component-name/
   - Test: Copiar writes formatted JSON to clipboard
   - Test: Copiar minificado writes minified JSON to clipboard
   - Test: Baixar triggers file download
-- [ ] 4.12. Move **AddFieldForm** + test
+- [x] 4.12. Move **AddFieldForm** + test
   - Test: renders all form fields
   - Test: target selector shows all available targets
   - Test: type selector changes visible value input
@@ -418,86 +418,86 @@ component-name/
   - Test: submit with empty name shows "Informe um nome." error
   - Test: submit with valid data calls handleApplyInsert
   - Test: form resets after successful add
-- [ ] 4.13. Move **NodeEditor** organism + test
+- [x] 4.13. Move **NodeEditor** organism + test
   - Test: renders empty object with ContainerDropZone
   - Test: renders nested objects/arrays when expanded
   - Test: "Expandir todos" expands all complex nodes
   - Test: "Recolher todos" collapses all nodes
   - Test: root type selector changes root value
   - Test: recursive rendering of nested structures
-- [ ] 4.14. Move **JsonPanel** organism + test
+- [x] 4.14. Move **JsonPanel** organism + test
   - Test: renders formatted JSON in CodeMirror (read-only)
   - Test: subheader shows "Somente leitura" when not editing
   - Test: subheader shows "Modo edição manual" when editing
-- [ ] 4.15. Move **VisualEditor** organism + test
+- [x] 4.15. Move **VisualEditor** organism + test
   - Test: renders PalettePanel on desktop
   - Test: renders AddFieldForm on mobile
   - Test: renders NodeEditor
-- [ ] 4.16. Move **TopBar** organism + test
+- [x] 4.16. Move **TopBar** organism + test
   - Test: renders "JSON Visual Editor" title
   - Test: theme toggle button exists and is clickable
   - Test: GitHub link present with correct href
-- [ ] 4.17. Update `App.tsx` imports
-- [ ] 4.18. Remove old component directories
-- [ ] 4.19. Verify: `npm run test` — all component tests pass
-- [ ] 4.20. Verify: `npm run typecheck && npm run lint` pass
-- [ ] 4.21. Verify: `npm run build` succeeds
-- [ ] 4.22. **Full Playwright validation** (all behaviors from baseline):
+- [x] 4.17. Update `App.tsx` imports
+- [x] 4.18. Remove old component directories
+- [x] 4.19. Verify: `npm run test` — all component tests pass
+- [x] 4.20. Verify: `npm run typecheck && npm run lint` pass
+- [x] 4.21. Verify: `npm run build` succeeds
+- [x] 4.22. **Full Playwright validation** (all behaviors from baseline):
 
 **Desktop (1280x800):**
-- [ ] Empty `{}` JSON on load
-- [ ] Drag "string" to drop zone → field created with key/type/value → JSON `{"newField": ""}`
-- [ ] Drag "object" to drop zone → nested object with expand/collapse → JSON `{"newField": {}}`
-- [ ] Drag "number" to drop zone → number field → JSON `{"newField": 0}`
-- [ ] Delete field → JSON reverts to `{}`
-- [ ] Rename key on blur → JSON updates with new key name (key moves to end)
-- [ ] Change type via selector → value converts (string→number: "item"→0)
-- [ ] Expand/collapse individual node
-- [ ] "Expandir todos" / "Recolher todos" bulk buttons
-- [ ] Editar JSON → CodeMirror editable, palette disabled, tree disabled
-- [ ] Validar with valid JSON → applies, returns to read-only
-- [ ] Validar with invalid JSON → error toast appears
-- [ ] Cancelar → reverts to read-only, no changes
-- [ ] Copiar → toast "JSON copiado para o clipboard!"
-- [ ] Copiar minificado → toast "JSON minificado copiado para o clipboard!"
-- [ ] Baixar → file download triggered, toast "JSON baixado com sucesso!"
-- [ ] Theme toggle → switches light↔dark, icon changes
-- [ ] Theme persists after page reload
-- [ ] Palette buttons have drag cursor, are draggable
-- [ ] Drag handle (GripVertical) on each node is draggable
-- [ ] Nested ContainerDropZone appears inside expanded complex nodes
-- [ ] Null type: no value input shown
+- [x] Empty `{}` JSON on load
+- [x] Drag "string" to drop zone → field created with key/type/value → JSON `{"newField": ""}`
+- [x] Drag "object" to drop zone → nested object with expand/collapse → JSON `{"newField": {}}`
+- [x] Drag "number" to drop zone → number field → JSON `{"newField": 0}`
+- [x] Delete field → JSON reverts to `{}`
+- [x] Rename key on blur → JSON updates with new key name (key moves to end)
+- [x] Change type via selector → value converts (string→number: "item"→0)
+- [x] Expand/collapse individual node
+- [x] "Expandir todos" / "Recolher todos" bulk buttons
+- [x] Editar JSON → CodeMirror editable, palette disabled, tree disabled
+- [x] Validar with valid JSON → applies, returns to read-only
+- [x] Validar with invalid JSON → error toast appears
+- [x] Cancelar → reverts to read-only, no changes
+- [x] Copiar → toast "JSON copiado para o clipboard!"
+- [x] Copiar minificado → toast "JSON minificado copiado para o clipboard!"
+- [x] Baixar → file download triggered, toast "JSON baixado com sucesso!"
+- [x] Theme toggle → switches light↔dark, icon changes
+- [x] Theme persists after page reload
+- [x] Palette buttons have drag cursor, are draggable
+- [x] Drag handle (GripVertical) on each node is draggable
+- [x] Nested ContainerDropZone appears inside expanded complex nodes
+- [x] Null type: no value input shown
 
 **Mobile (375x812):**
-- [ ] AddFieldForm visible (palette buttons hidden)
-- [ ] Target selector shows "Início (object)"
-- [ ] Type selector shows all 5 types
-- [ ] Name field enabled for object parent
-- [ ] Name field disabled for array parent
-- [ ] Null toggle disables type + value inputs
-- [ ] "Adicionar" button submits form
-- [ ] Toolbar shows icon-only buttons with tooltips
-- [ ] Edit mode shows icon-only Cancelar/Validar
-- [ ] Layout is single-column stacked
+- [x] AddFieldForm visible (palette buttons hidden)
+- [x] Target selector shows "Início (object)"
+- [x] Type selector shows all 5 types
+- [x] Name field enabled for object parent
+- [x] Name field disabled for array parent
+- [x] Null toggle disables type + value inputs
+- [x] "Adicionar" button submits form
+- [x] Toolbar shows icon-only buttons with tooltips
+- [x] Edit mode shows icon-only Cancelar/Validar
+- [x] Layout is single-column stacked
 
 **Cross-cutting:**
-- [ ] Snackbar toast appears at bottom-center, auto-hides after 4s
-- [ ] NumberField allows typing "1." (mid-edit state preserved)
-- [ ] NumberField blur with invalid input resets to 0
+- [x] Snackbar toast appears at bottom-center, auto-hides after 4s
+- [x] NumberField allows typing "1." (mid-edit state preserved)
+- [x] NumberField blur with invalid input resets to 0
 
 ### Acceptance Criteria
-- [ ] All 18 component test files exist in `__tests__/` folders
-- [ ] Every atom has behavioral tests (5 atoms × 3+ tests each)
-- [ ] Every molecule has behavioral tests (6 molecules × 3+ tests each)
-- [ ] Every organism has behavioral tests (4 organisms × 2+ tests each)
-- [ ] No template file > 150 lines
-- [ ] No composable file > 80 lines
-- [ ] All old component directories removed
-- [ ] `npm run test` passes (0 failures)
-- [ ] `npm run typecheck` passes
-- [ ] `npm run lint` passes
-- [ ] `npm run build` passes
-- [ ] **All 30+ Playwright checks pass** (see list above)
+- [x] All 18 component test files exist in `__tests__/` folders
+- [x] Every atom has behavioral tests (5 atoms × 3+ tests each)
+- [x] Every molecule has behavioral tests (6 molecules × 3+ tests each)
+- [x] Every organism has behavioral tests (4 organisms × 2+ tests each)
+- [x] No template file > 150 lines
+- [x] No composable file > 80 lines
+- [x] All old component directories removed
+- [x] `npm run test` passes (0 failures)
+- [x] `npm run typecheck` passes
+- [x] `npm run lint` passes
+- [x] `npm run build` passes
+- [x] **All 30+ Playwright checks pass** (see list above)
 
 ---
 
