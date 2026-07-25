@@ -4,6 +4,8 @@ import { ThemeProvider, createTheme } from '@mui/material'
 import { ArrayItem } from '../ArrayItem'
 import { useJsonStore } from '../../../../store/jsonStore'
 import { useUiStore } from '../../../../store/uiStore'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 import type { JsonValue, JsonArray } from '../../../../types'
 
 const theme = createTheme()
@@ -12,19 +14,21 @@ function renderArrayItem(index: number, item: JsonValue, parentPath: Array<strin
   const arr: JsonArray = [item]
   const { expanded, toggleExpand, expandPath } = useUiStore.getState()
   render(
-    <ThemeProvider theme={theme}>
-      <ArrayItem
-        index={index}
-        item={item}
-        parentPath={parentPath}
-        arr={arr}
-        expanded={expanded}
-        toggleExpand={toggleExpand}
-        expandPath={expandPath}
-        renderChildren={() => null}
-        locked={false}
-      />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <ArrayItem
+          index={index}
+          item={item}
+          parentPath={parentPath}
+          arr={arr}
+          expanded={expanded}
+          toggleExpand={toggleExpand}
+          expandPath={expandPath}
+          renderChildren={() => null}
+          locked={false}
+        />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 
@@ -70,19 +74,21 @@ describe('ArrayItem', () => {
     const fullArr: JsonArray = ['a', 'b', 'c']
     const { expanded, toggleExpand, expandPath } = useUiStore.getState()
     render(
-      <ThemeProvider theme={theme}>
-        <ArrayItem
-          index={1}
-          item={'b'}
-          parentPath={[]}
-          arr={fullArr}
-          expanded={expanded}
-          toggleExpand={toggleExpand}
-          expandPath={expandPath}
-          renderChildren={() => null}
-          locked={false}
-        />
-      </ThemeProvider>
+      <ContainerProvider value={container}>
+        <ThemeProvider theme={theme}>
+          <ArrayItem
+            index={1}
+            item={'b'}
+            parentPath={[]}
+            arr={fullArr}
+            expanded={expanded}
+            toggleExpand={toggleExpand}
+            expandPath={expandPath}
+            renderChildren={() => null}
+            locked={false}
+          />
+        </ThemeProvider>
+      </ContainerProvider>
     )
     const deleteBtn = screen.getAllByRole('button')[0]!
     deleteBtn.click()

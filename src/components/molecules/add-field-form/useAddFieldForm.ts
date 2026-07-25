@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, startTransition } from 'react'
 import { z } from 'zod'
 import { useUiStore } from '../../../store/uiStore'
 import { useJsonStore } from '../../../store/jsonStore'
-import { JsonTreeService } from '../../../services/JsonTreeService'
+import { useContainer } from '../../../useContainer'
+import { TYPES } from '../../../core/types'
+import type { JsonTreeService } from '../../../services/JsonTreeService'
 import type { FieldType } from '../../../types'
-
-const treeSvc = new JsonTreeService()
 
 /**
  * Composable for the AddFieldForm molecule.
@@ -31,8 +31,8 @@ export function useAddFieldForm(): {
   setValueBoolean: (v: boolean) => void
   setValueIsNull: (v: boolean) => void
   editingJson: boolean
-  targets: ReturnType<typeof treeSvc.enumerateTargets>
-  selectedTarget: ReturnType<typeof treeSvc.enumerateTargets>[number] | undefined
+  targets: ReturnType<JsonTreeService['enumerateTargets']>
+  selectedTarget: ReturnType<JsonTreeService['enumerateTargets']>[number] | undefined
   onAdd: () => void
 } {
   const {
@@ -45,8 +45,10 @@ export function useAddFieldForm(): {
 
   const { jsonValue, handleApplyInsert } = useJsonStore()
   const { expandPath } = useUiStore()
+  const container = useContainer()
+  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
 
-  const targets = useMemo(() => treeSvc.enumerateTargets(jsonValue ?? {}), [jsonValue])
+  const targets = useMemo(() => treeSvc.enumerateTargets(jsonValue ?? {}), [jsonValue, treeSvc])
 
   const selectedTarget = useMemo(
     () => targets.find((t) => t.label === targetLabel) ?? targets[0],

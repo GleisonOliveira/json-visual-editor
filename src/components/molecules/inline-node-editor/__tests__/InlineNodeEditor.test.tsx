@@ -2,15 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ThemeProvider, createTheme } from '@mui/material'
 import { InlineNodeEditor } from '../InlineNodeEditor'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 import type { JsonValue } from '../../../../types'
 
 const theme = createTheme()
 
 function renderInlineNodeEditor(value: JsonValue, path: Array<string | number>, locked = false): void {
   render(
-    <ThemeProvider theme={theme}>
-      <InlineNodeEditor value={value} path={path} locked={locked} />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <InlineNodeEditor value={value} path={path} locked={locked} />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 

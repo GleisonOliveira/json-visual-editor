@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react'
 import { ThemeProvider, createTheme } from '@mui/material'
 import { TypeSelector } from '../TypeSelector'
 import { useJsonStore } from '../../../../store/jsonStore'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 
 const theme = createTheme()
 
@@ -12,9 +14,11 @@ function renderTypeSelector(
   locked = false
 ): void {
   render(
-    <ThemeProvider theme={theme}>
-      <TypeSelector path={path} nodeType={nodeType} locked={locked} />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <TypeSelector path={path} nodeType={nodeType} locked={locked} />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 

@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 import type { JsonStore } from './types'
-import { jsonActions } from './actions'
+import { createJsonActions } from './actions'
+import { container } from '../../core/container'
+
+const jsonActions = createJsonActions(container)
 
 export const useJsonStore = create<JsonStore>((set) => ({
   jsonValue: {},

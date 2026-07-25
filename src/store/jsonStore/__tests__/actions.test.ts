@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { jsonActions } from '../actions'
+import { container } from '../../../core/container'
+import { createJsonActions } from '../actions'
+
+const jsonActions = createJsonActions(container)
 
 describe('jsonStore actions', () => {
   describe('setJsonValue', () => {

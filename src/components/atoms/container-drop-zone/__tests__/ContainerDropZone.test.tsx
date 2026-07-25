@@ -4,6 +4,8 @@ import { ThemeProvider, createTheme } from '@mui/material'
 import { ContainerDropZone } from '../ContainerDropZone'
 import { useJsonStore } from '../../../../store/jsonStore'
 import { useUiStore } from '../../../../store/uiStore'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 
 const theme = createTheme()
 
@@ -13,9 +15,11 @@ function renderDropZone(
   locked = false
 ): void {
   render(
-    <ThemeProvider theme={theme}>
-      <ContainerDropZone parentPath={parentPath} parentKind={parentKind} locked={locked} />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <ContainerDropZone parentPath={parentPath} parentKind={parentKind} locked={locked} />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 

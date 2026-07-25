@@ -1,12 +1,11 @@
 import React, { useState } from 'react'
 import { Box, Typography } from '@mui/material'
 import type { DndPayload, JsonValue } from '../../../types'
-import { JsonTreeService } from '../../../services/JsonTreeService'
 import { useJsonStore } from '../../../store/jsonStore'
 import { useUiStore } from '../../../store/uiStore'
-
-const treeSvc = new JsonTreeService()
-const { isPalettePayload, isAncestorOrEqual } = treeSvc
+import { useContainer } from '../../../useContainer'
+import { TYPES } from '../../../core/types'
+import type { JsonTreeService } from '../../../services/JsonTreeService'
 
 /**
  * Atom: a dashed-border drop zone for drag-and-drop operations.
@@ -21,6 +20,9 @@ export function ContainerDropZone(props: {
   const { parentPath, locked } = props
   const { handleMove, handleInsert } = useJsonStore()
   const { expandPath } = useUiStore()
+  const container = useContainer()
+  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const { isPalettePayload, isAncestorOrEqual } = treeSvc
   const [isOver, setIsOver] = useState(false)
   const depth = React.useRef(0)
 

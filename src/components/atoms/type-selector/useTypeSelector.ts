@@ -1,11 +1,9 @@
 import { useCallback } from 'react'
 import { useJsonStore } from '../../../store/jsonStore'
-import { JsonMutationService } from '../../../services/JsonMutationService'
-import { JsonTreeService } from '../../../services/JsonTreeService'
+import { useContainer } from '../../../useContainer'
+import { TYPES } from '../../../core/types'
+import type { JsonMutationService } from '../../../services/JsonMutationService'
 import type { NullableFieldType } from '../../../types'
-
-const treeSvc = new JsonTreeService()
-const mutationSvc = new JsonMutationService(treeSvc)
 
 /**
  * Composable for the TypeSelector atom.
@@ -21,6 +19,8 @@ export function useTypeSelector(
   currentNodeType: NullableFieldType
 ): { setNodeType: (nextType: NullableFieldType) => void } {
   const { handleUpdate } = useJsonStore()
+  const container = useContainer()
+  const mutationSvc = container.get<JsonMutationService>(TYPES.JsonMutationService)
 
   const setNodeType = useCallback(
     (nextType: NullableFieldType): void => {
@@ -35,7 +35,7 @@ export function useTypeSelector(
       })
       handleUpdate(path, next)
     },
-    [path, currentNodeType, handleUpdate]
+    [path, currentNodeType, handleUpdate, mutationSvc]
   )
 
   return { setNodeType }

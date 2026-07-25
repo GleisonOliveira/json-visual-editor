@@ -5,14 +5,18 @@ import { ThemeProvider, createTheme } from '@mui/material'
 import { AddFieldForm } from '../AddFieldForm'
 import { useJsonStore } from '../../../../store/jsonStore'
 import { useUiStore } from '../../../../store/uiStore'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 
 const theme = createTheme()
 
 function renderAddFieldForm(): void {
   render(
-    <ThemeProvider theme={theme}>
-      <AddFieldForm />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <AddFieldForm />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 

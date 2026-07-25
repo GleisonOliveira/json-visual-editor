@@ -485,6 +485,76 @@ component-name/
 - [x] NumberField allows typing "1." (mid-edit state preserved)
 - [x] NumberField blur with invalid input resets to 0
 
+### Dependency Injection (Container)
+
+All services must be resolved through the Inversify container. No component or store action may use `new ServiceClass()` directly.
+
+**Pattern:**
+- `ContainerProvider` (React Context) wraps the app at the root.
+- Composables and templates call `useContainer()` to resolve services via `container.get(TYPES.XxxService)`.
+- Store actions use a factory function `createJsonActions(container)` that receives the container and resolves services internally.
+- Tests create a fresh `Container` with mock bindings and wrap render calls in `<ContainerProvider>`.
+
+- [x] 4.23. Create `src/core/containerContext.tsx`
+  - `ContainerContext` React context holding a `Container` instance
+  - `ContainerProvider` component: accepts `value` prop, provides container via context
+  - `useContainer()` hook: returns the container from context; throws if missing
+  - No JSDoc on trivial getters/setters; JSDoc on provider and hook explaining purpose and usage
+
+- [x] 4.24. Update `src/main.tsx`
+  - Import `ContainerProvider` and the app-level `container`
+  - Wrap `<App />` with `<ContainerProvider value={container}>`
+  - Keep the `import './core/container'` side-effect import for binding registration
+
+- [x] 4.25. Convert `src/store/jsonStore/actions.ts` to factory pattern
+  - Export `createJsonActions(container: Container): typeof jsonActions`
+  - Inside the factory, resolve `JsonTreeService` and `JsonMutationService` from the container
+  - Remove top-level `new JsonTreeService()` and `new JsonMutationService(treeSvc)` calls
+  - Keep the same `jsonActions` shape for backward compatibility
+
+- [x] 4.26. Update `src/store/jsonStore/index.ts`
+  - Import `container` from `src/core/container`
+  - Call `createJsonActions(container)` to get the actions object
+  - Pass the actions object to the Zustand store creation
+
+- [x] 4.27. ~~Update `src/test/setup.ts`~~ Skipped — each test file wraps individually with `<ContainerProvider>`
+
+- [x] 4.28. Update `src/components/atoms/container-drop-zone/ContainerDropZone.tsx`
+  - Replace `const treeSvc = new JsonTreeService()` with `useContainer().get(TYPES.JsonTreeService)`
+  - Move service resolution inside the component (or extract to composable)
+
+- [x] 4.29. Update `src/components/atoms/type-selector/useTypeSelector.ts`
+  - Replace `const treeSvc = new JsonTreeService()` and `const mutationSvc = new JsonMutationService(treeSvc)` with container resolution
+
+- [x] 4.30. Update `src/components/molecules/inline-node-editor/useInlineNodeEditor.ts`
+  - Replace `const treeSvc = new JsonTreeService()` with container resolution
+
+- [x] 4.31. Update `src/components/molecules/add-field-form/useAddFieldForm.ts`
+  - Replace `const treeSvc = new JsonTreeService()` with container resolution
+
+- [x] 4.32. Update `src/components/molecules/object-item/ObjectItem.tsx`
+  - Replace `const treeSvc = new JsonTreeService()` with container resolution
+
+- [x] 4.33. Update `src/components/molecules/array-item/ArrayItem.tsx`
+  - Replace `const treeSvc = new JsonTreeService()` with container resolution
+
+- [x] 4.34. Update `src/components/organisms/node-editor/useNodeEditor.tsx`
+  - Replace `const treeSvc = new JsonTreeService()` with container resolution
+
+- [x] 4.35. Create `src/core/__tests__/containerContext.test.tsx`
+  - Test: `useContainer()` throws when used outside provider
+  - Test: `useContainer()` returns the container provided by `ContainerProvider`
+  - Test: services resolved from provider container match provided container
+
+- [x] 4.36. Update component test files with `<ContainerProvider>`
+  - Wrap all component renders in tests with `<ContainerProvider value={testContainer}>`
+  - Files: `ContainerDropZone.test.tsx`, `TypeSelector.test.tsx`, `InlineNodeEditor.test.tsx`, `AddFieldForm.test.tsx`, `ObjectItem.test.tsx`, `ArrayItem.test.tsx`, `NodeEditor.test.tsx`
+  - Update `store/jsonStore/__tests__/actions.test.ts` for factory pattern
+
+- [x] 4.37. Verify: `npm run test` — all tests pass (including new containerContext tests)
+- [x] 4.38. Verify: `npm run typecheck && npm run lint` pass
+- [x] 4.39. Verify: `npm run build` succeeds
+
 ### Acceptance Criteria
 - [x] All 18 component test files exist in `__tests__/` folders
 - [x] Every atom has behavioral tests (5 atoms × 3+ tests each)
@@ -498,6 +568,12 @@ component-name/
 - [x] `npm run lint` passes
 - [x] `npm run build` passes
 - [x] **All 30+ Playwright checks pass** (see list above)
+- [x] Zero `new JsonTreeService()` / `new JsonMutationService()` / `new JsonValidationService()` / `new ClipboardService()` / `new FileDownloadService()` calls in production code (only allowed in `src/core/container.ts` bindings and test files)
+- [x] All composables resolve services via `useContainer().get(TYPES.*)` instead of `new ServiceClass()`
+- [x] Store actions created via `createJsonActions(container)` factory pattern
+- [x] All component tests use `<ContainerProvider>` wrapper with a fresh test container
+- [x] New `containerContext.test.tsx` covers provider/hook behavior
+- [x] `containerContext.tsx` has JSDoc on `ContainerProvider` and `useContainer()` explaining DI purpose
 
 ---
 

@@ -3,14 +3,18 @@ import { render, screen } from '@testing-library/react'
 import { ThemeProvider, createTheme } from '@mui/material'
 import { VisualEditor } from '../VisualEditor'
 import { useUiStore } from '../../../../store/uiStore'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 
 const theme = createTheme()
 
 function renderVisualEditor(): void {
   render(
-    <ThemeProvider theme={theme}>
-      <VisualEditor />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <VisualEditor />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 

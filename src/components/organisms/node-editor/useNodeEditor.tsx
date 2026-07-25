@@ -2,13 +2,12 @@ import { useCallback, useMemo } from 'react'
 import type React from 'react'
 import { useJsonStore } from '../../../store/jsonStore'
 import { useUiStore } from '../../../store/uiStore'
-import { JsonTreeService } from '../../../services/JsonTreeService'
+import { useContainer } from '../../../useContainer'
+import { TYPES } from '../../../core/types'
+import type { JsonTreeService } from '../../../services/JsonTreeService'
 import { ObjectItem } from '../../molecules/object-item/ObjectItem'
 import { ArrayItem } from '../../molecules/array-item/ArrayItem'
 import type { JsonValue, JsonObject, NullableFieldType } from '../../../types'
-
-const treeSvc = new JsonTreeService()
-const { isArray, isObject } = treeSvc
 
 /**
  * Composable for the NodeEditor organism.
@@ -28,6 +27,9 @@ export function useNodeEditor(locked: boolean): {
 } {
   const { jsonValue } = useJsonStore()
   const { expanded, toggleExpand, expandPath, collapseAll, expandAll } = useUiStore()
+  const container = useContainer()
+  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const { isArray, isObject } = treeSvc
   const value = jsonValue
 
   const nodeType: NullableFieldType = useMemo(() => {
@@ -39,9 +41,9 @@ export function useNodeEditor(locked: boolean): {
     if (typeof value === 'boolean') return 'boolean'
 
     return 'null'
-  }, [value])
+  }, [value, isArray, isObject])
 
-  const allComplexKeys = useMemo(() => treeSvc.collectComplexKeys(value, []), [value])
+  const allComplexKeys = useMemo(() => treeSvc.collectComplexKeys(value, []), [value, treeSvc])
   const hasComplex = allComplexKeys.length > 0
 
   const renderChildren = useCallback(

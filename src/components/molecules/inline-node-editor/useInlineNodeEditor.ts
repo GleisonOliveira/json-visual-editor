@@ -1,9 +1,8 @@
 import { useMemo } from 'react'
-import { JsonTreeService } from '../../../services/JsonTreeService'
+import { useContainer } from '../../../useContainer'
+import { TYPES } from '../../../core/types'
+import type { JsonTreeService } from '../../../services/JsonTreeService'
 import type { JsonValue, NullableFieldType } from '../../../types'
-
-const treeSvc = new JsonTreeService()
-const { isArray, isObject } = treeSvc
 
 /**
  * Composable for InlineNodeEditor.
@@ -13,6 +12,10 @@ const { isArray, isObject } = treeSvc
  * @returns Object with the derived `nodeType`.
  */
 export function useInlineNodeEditor(value: JsonValue): { nodeType: NullableFieldType } {
+  const container = useContainer()
+  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const { isArray, isObject } = treeSvc
+
   const nodeType: NullableFieldType = useMemo(() => {
     if (value === null) return 'null'
     if (isArray(value)) return 'array'
@@ -22,7 +25,7 @@ export function useInlineNodeEditor(value: JsonValue): { nodeType: NullableField
     if (typeof value === 'boolean') return 'boolean'
 
     return 'null'
-  }, [value])
+  }, [value, isArray, isObject])
 
   return { nodeType }
 }

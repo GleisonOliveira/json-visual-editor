@@ -4,6 +4,8 @@ import { ThemeProvider, createTheme } from '@mui/material'
 import { ObjectItem } from '../ObjectItem'
 import { useJsonStore } from '../../../../store/jsonStore'
 import { useUiStore } from '../../../../store/uiStore'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 import type { JsonValue, JsonObject } from '../../../../types'
 
 const theme = createTheme()
@@ -12,19 +14,21 @@ function renderObjectItem(objKey: string, value: JsonValue, parentPath: Array<st
   const obj: JsonObject = { [objKey]: value }
   const { expanded, toggleExpand, expandPath } = useUiStore.getState()
   render(
-    <ThemeProvider theme={theme}>
-      <ObjectItem
-        objKey={objKey}
-        value={value}
-        parentPath={parentPath}
-        obj={obj}
-        expanded={expanded}
-        toggleExpand={toggleExpand}
-        expandPath={expandPath}
-        renderChildren={() => null}
-        locked={false}
-      />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <ObjectItem
+          objKey={objKey}
+          value={value}
+          parentPath={parentPath}
+          obj={obj}
+          expanded={expanded}
+          toggleExpand={toggleExpand}
+          expandPath={expandPath}
+          renderChildren={() => null}
+          locked={false}
+        />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 

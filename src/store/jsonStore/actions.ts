@@ -1,33 +1,44 @@
+import type { Container } from 'inversify'
 import type { JsonValue, DndPayload, NodeTarget, InsertValueOpts } from '../../types'
-import { JsonTreeService } from '../../services/JsonTreeService'
-import { JsonMutationService } from '../../services/JsonMutationService'
-
-const treeSvc = new JsonTreeService()
-const mutationSvc = new JsonMutationService(treeSvc)
+import { TYPES } from '../../core/types'
+import type { JsonMutationService } from '../../services/JsonMutationService'
 
 /**
- * Pure action creators for the JSON store.
+ * Pure action creators for the JSON store, created via factory pattern.
  * Each action receives the current `jsonValue` and returns the new value.
- * Extracted for testability and separation of concerns.
+ * Services are resolved from the provided Inversify container.
+ *
+ * @param appContainer - The Inversify container to resolve services from.
+ * @returns An object with all JSON store action creators.
  */
-export const jsonActions = {
-  /** Replaces the entire JSON root. */
-  setJsonValue: (prev: JsonValue, updater: (prev: JsonValue) => JsonValue): JsonValue =>
-    updater(prev),
+export function createJsonActions(appContainer: Container): {
+  setJsonValue: (prev: JsonValue, updater: (prev: JsonValue) => JsonValue) => JsonValue
+  handleUpdate: (prev: JsonValue, path: Array<string | number>, next: JsonValue) => JsonValue
+  handleMove: (prev: JsonValue, payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null) => JsonValue
+  handleInsert: (prev: JsonValue, paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null) => JsonValue
+  handleApplyInsert: (prev: JsonValue, target: NodeTarget, name: string, type: string, insertValue: InsertValueOpts) => JsonValue
+} {
+  const mutationSvc = appContainer.get<JsonMutationService>(TYPES.JsonMutationService)
 
-  /** Updates a primitive value at the given path. */
-  handleUpdate: (prev: JsonValue, path: Array<string | number>, next: JsonValue): JsonValue =>
-    mutationSvc.updatePrimitive(prev, path, next),
+  return {
+    /** Replaces the entire JSON root. */
+    setJsonValue: (prev: JsonValue, updater: (prev: JsonValue) => JsonValue): JsonValue =>
+      updater(prev),
 
-  /** Moves a node from one position to another. */
-  handleMove: (prev: JsonValue, payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null): JsonValue =>
-    mutationSvc.moveNode(prev, payload, toParentPath, toKey),
+    /** Updates a primitive value at the given path. */
+    handleUpdate: (prev: JsonValue, path: Array<string | number>, next: JsonValue): JsonValue =>
+      mutationSvc.updatePrimitive(prev, path, next),
 
-  /** Inserts a new default node at the given position. */
-  handleInsert: (prev: JsonValue, paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null): JsonValue =>
-    mutationSvc.insertFromPalette(prev, paletteType, toParentPath, toKey),
+    /** Moves a node from one position to another. */
+    handleMove: (prev: JsonValue, payload: DndPayload, toParentPath: Array<string | number>, toKey: string | number | null): JsonValue =>
+      mutationSvc.moveNode(prev, payload, toParentPath, toKey),
 
-  /** Inserts a field via the AddFieldForm. */
-  handleApplyInsert: (prev: JsonValue, target: NodeTarget, name: string, type: string, insertValue: InsertValueOpts): JsonValue =>
-    mutationSvc.applyInsert(prev, target, name, type, insertValue),
+    /** Inserts a new default node at the given position. */
+    handleInsert: (prev: JsonValue, paletteType: string, toParentPath: Array<string | number>, toKey: string | number | null): JsonValue =>
+      mutationSvc.insertFromPalette(prev, paletteType, toParentPath, toKey),
+
+    /** Inserts a field via the AddFieldForm. */
+    handleApplyInsert: (prev: JsonValue, target: NodeTarget, name: string, type: string, insertValue: InsertValueOpts): JsonValue =>
+      mutationSvc.applyInsert(prev, target, name, type, insertValue),
+  }
 }

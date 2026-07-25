@@ -4,14 +4,18 @@ import { ThemeProvider, createTheme } from '@mui/material'
 import { NodeEditor } from '../NodeEditor'
 import { useJsonStore } from '../../../../store/jsonStore'
 import { useUiStore } from '../../../../store/uiStore'
+import { ContainerProvider } from '../../../../core/containerContext'
+import { container } from '../../../../core/container'
 
 const theme = createTheme()
 
 function renderNodeEditor(locked = false): void {
   render(
-    <ThemeProvider theme={theme}>
-      <NodeEditor locked={locked} />
-    </ThemeProvider>
+    <ContainerProvider value={container}>
+      <ThemeProvider theme={theme}>
+        <NodeEditor locked={locked} />
+      </ThemeProvider>
+    </ContainerProvider>
   )
 }
 

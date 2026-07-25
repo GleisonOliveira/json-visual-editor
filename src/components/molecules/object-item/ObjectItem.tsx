@@ -6,11 +6,10 @@ import { ContainerDropZone } from '../../atoms/container-drop-zone/ContainerDrop
 import { useDndItem } from '../../../hooks/useDndItem'
 import { useObjectItem } from './useObjectItem'
 import { useJsonStore } from '../../../store/jsonStore'
-import { JsonTreeService } from '../../../services/JsonTreeService'
+import { useContainer } from '../../../useContainer'
+import { TYPES } from '../../../core/types'
+import type { JsonTreeService } from '../../../services/JsonTreeService'
 import type { JsonValue, JsonObject } from '../../../types'
-
-const treeSvc = new JsonTreeService()
-const { isComplexValue, isArray, isPalettePayload, isAncestorOrEqual } = treeSvc
 
 function expandInserted(parentPath: Array<string | number>, expandPathFn: (p: Array<string | number>) => void): void {
   const newJson = useJsonStore.getState().jsonValue
@@ -40,6 +39,9 @@ export function ObjectItem(props: {
 }): React.JSX.Element {
   const { objKey: k, value: v, parentPath, obj, expanded, toggleExpand, expandPath, renderChildren, locked } = props
   const { handleUpdate, handleMove, handleInsert } = useObjectItem()
+  const container = useContainer()
+  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const { isComplexValue, isArray, isPalettePayload, isAncestorOrEqual } = treeSvc
   const itemPath = [...parentPath, k]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath, k)
   const expandKey = JSON.stringify(itemPath)
