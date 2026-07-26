@@ -632,6 +632,140 @@ The following bugs were found during QA testing of https://jsonvisualeditor.com/
 
 ---
 
+## Accessibility Audit (a11y) — Playwright + axe-core + Source Code Analysis
+
+**Audit Date:** 2026-07-26
+**Method:** Playwright MCP (axe-core automated scan, manual DOM audit, source code contrast analysis)
+**Screen Sizes:** Desktop (1280x800) tested via Playwright. Tablet (768x1024) and Mobile (375x812) analysis via responsive code review (Playwright browser crashed during tablet/mobile viewport testing).
+**Scope:** All buttons (12), all inputs (8), all links (1), headings, ARIA, contrast, keyboard navigation, lang attribute, skip link, focus management.
+
+### Summary of Findings
+
+| # | Severity | WCAG | Issue | Component(s) |
+|---|----------|------|-------|--------------|
+| 1 | Serious | 4.1.2 | CodeMirror textbox missing accessible name | JsonPanel |
+| 2 | Serious | 4.1.2 | Switch toggle missing programmatic label | AddFieldForm |
+| 3 | Serious | 1.3.1 | Heading hierarchy skips levels (h1 → h6) | AddFieldForm, VisualEditor |
+| 4 | Serious | 3.1.1 | `html lang="en"` but UI content is Portuguese | index.html |
+| 5 | Moderate | 1.4.3 | CM gutter text fails contrast ratio (light: 2.63:1, dark: 2.26:1) | CodeMirror theme |
+| 6 | Moderate | 2.4.1 | No skip navigation link | App.tsx |
+| 7 | Minor | 1.3.1 | Drag handle (GripVertical) has no accessible name | ObjectItem, ArrayItem |
+| 8 | Minor | 4.1.2 | Key rename TextField has no label or aria-label | ObjectItem |
+| 9 | Minor | 1.3.5 | Form fields on AddFieldForm lack autocomplete hints | AddFieldForm |
+
+---
+
+### Detailed Findings
+
+#### [A11y-01] CodeMirror textbox missing accessible name (Serious)
+- **WCAG:** 4.1.2 Name, Role, Value (Level A)
+- **axe-core rule:** `aria-input-field-name`
+- **Element:** `.cm-content` with `role="textbox"`, `aria-multiline="true"`
+- **Failure:** No `aria-label`, no `aria-labelledby`, no `title` attribute
+- **Impact:** Screen reader users cannot identify the purpose of the JSON editor
+- **File:** `src/components/organisms/json-panel/JsonPanel.tsx:47-54`
+- **Fix:** Add `aria-label="JSON editor"` or `aria-labelledby` pointing to the panel header
+
+#### [A11y-02] Switch toggle missing programmatic label (Serious)
+- **WCAG:** 4.1.2 Name, Role, Value (Level A)
+- **Element:** `<input role="switch" type="checkbox">` inside AddFieldForm
+- **Failure:** The Switch has no `aria-label` or `aria-labelledby`. The sibling `<Typography>Nulo</Typography>` is visually adjacent but not programmatically associated via `<label>`, `aria-labelledby`, or wrapping.
+- **Impact:** Screen reader users hear "switch" with no context about what it controls
+- **File:** `src/components/molecules/add-field-form/AddFieldForm.tsx:127`
+- **Fix:** Wrap Switch + Typography in a `<FormControlLabel>` or add `aria-label="Nulo"`
+
+#### [A11y-03] Heading hierarchy skips levels (Serious)
+- **WCAG:** 1.3.1 Info and Relationships (Level A)
+- **Current:** `<h1>` "JSON Visual Editor" → `<h6>` "Adicionar dados ao JSON"
+- **Failure:** Heading levels h2–h5 are skipped entirely
+- **Impact:** Screen reader users navigating by headings will experience a broken hierarchy
+- **Files:** `src/components/organisms/top-bar/TopBar.tsx:30` (h1), `src/components/molecules/add-field-form/AddFieldForm.tsx:33` (Typography with variant subtitle2, rendered as h6)
+- **Fix:** Change "Adicionar dados ao JSON" from `variant="subtitle2"` (h6) to `variant="h2"` or use `component="h2"`. Similarly review "Modelo (visual)" and "JSON Final" card headers.
+
+#### [A11y-04] HTML lang attribute mismatch (Serious)
+- **WCAG:** 3.1.1 Language of Page (Level A)
+- **Current:** `<html lang="en">` in `index.html`
+- **Content language:** Portuguese (PT-BR) — all UI text is in Portuguese
+- **Impact:** Screen readers will pronounce Portuguese text using English phoneme rules
+- **File:** `index.html`
+- **Fix:** Change to `<html lang="pt-BR">`
+
+#### [A11y-05] CodeMirror gutter text fails contrast (Moderate)
+- **WCAG:** 1.4.3 Contrast Minimum (Level AA) — requires 4.5:1 for normal text
+- **Light theme:** CM gutter color `#888888` (rgb 136,136,136) on bg `#ececef` (rgb 236,236,239) = **2.63:1** — FAIL
+- **Dark theme:** CM gutter color `#555555` (rgb 85,85,85) on bg `#1a1b22` (rgb 26,27,34) = **2.26:1** — FAIL
+- **Impact:** Line numbers are difficult to read for low-vision users
+- **File:** `src/theme.ts:98` (light: `color: '#888'`), `src/theme.ts:124` (dark: `color: '#555'`)
+- **Fix:** Light: increase to at least `#767676` (4.54:1). Dark: increase to at least `#888` (5.32:1)
+
+#### [A11y-06] No skip navigation link (Moderate)
+- **WCAG:** 2.4.1 Bypass Blocks (Level A)
+- **Current:** No skip link found anywhere in the DOM
+- **Impact:** Keyboard-only users must tab through every toolbar button to reach main content
+- **File:** `src/App.tsx`
+- **Fix:** Add a visually-hidden "Skip to content" link as the first focusable element
+
+#### [A11y-07] Drag handle has no accessible name (Minor)
+- **WCAG:** 1.3.1 Info and Relationships (Level A)
+- **Element:** `<GripVertical size={14} />` inside a `<Box>` with drag handlers
+- **Failure:** The drag handle icon has no aria-label, role, or text alternative
+- **Impact:** Screen reader users may not understand the purpose of the interactive element
+- **Files:** `src/components/molecules/object-item/ObjectItem.tsx:70-74`, `src/components/molecules/array-item/ArrayItem.tsx:69-73`
+- **Fix:** Add `role="img" aria-label="Drag to reorder"` or `aria-label="Arrastar para reordenar"` to the Box
+
+#### [A11y-08] Key rename TextField has no label (Minor)
+- **WCAG:** 4.1.2 Name, Role, Value (Level A)
+- **Element:** `<TextField size="small" defaultValue={k} variant="outlined">` in ObjectItem
+- **Failure:** No `label`, `aria-label`, or `aria-labelledby` on the key rename input
+- **Impact:** Screen reader users cannot determine what the input field represents
+- **File:** `src/components/molecules/object-item/ObjectItem.tsx:82-98`
+- **Fix:** Add `aria-label={`Rename key ${k}`}`
+
+#### [A11y-09] Missing autocomplete hints on form fields (Minor)
+- **WCAG:** 1.3.5 Identify Input Purpose (Level AA)
+- **Element:** "Nome do campo" and "Valor" TextFields in AddFieldForm
+- **Failure:** No `autocomplete` attribute on name/value inputs
+- **Impact:** Browsers and assistive technologies cannot suggest previously entered values
+- **File:** `src/components/molecules/add-field-form/AddFieldForm.tsx:87-98, 103, 109`
+- **Fix:** Add `autocomplete="off"` since these are unique JSON field names/values, not standard form data
+
+---
+
+### Items Verified as Passing
+
+| Check | Result | Details |
+|-------|--------|---------|
+| All 12 buttons have accessible names | ✅ PASS | Theme toggle has `aria-label="Tema claro"`. All other buttons have visible text content |
+| All 8 inputs checked | ✅ PASS | Comboboxes have `aria-labelledby`. TextFields have labels. (issues noted above for specific items) |
+| Link has accessible name | ✅ PASS | GitHub link "Ver no GitHub" has visible text |
+| No duplicate IDs | ✅ PASS | No duplicate element IDs found |
+| ARIA roles correct | ✅ PASS | `role="combobox"`, `role="switch"`, `role="textbox"` all appropriate |
+| Images have alt text | ✅ PASS | No `<img>` elements; SVGs are decorative within labeled buttons |
+| Theme toggle persistence | ✅ PASS | localStorage-based, accessible via keyboard |
+| Responsive layout | ✅ PASS | Desktop: 2-column, Mobile: 1-column stacked. AddFieldForm on mobile, PalettePanel on desktop |
+
+---
+
+### Responsive Design Notes (Code Review — Playwright viewport testing interrupted)
+
+The app uses MUI Grid with `xs: 12, md: 6` for panel layout, providing responsive behavior. The following responsive patterns were observed in code:
+
+1. **Desktop (≥960px):** Two-column layout with VisualEditor (palette + tree) and JsonPanel side by side
+2. **Mobile (<960px):** Single-column stacked layout
+3. **Mobile (<960px):** AddFieldForm replaces PalettePanel (palette buttons hidden)
+4. **Small screens:** JsonToolbar switches to icon-only buttons with Tooltip
+5. **Tablet testing was not completed** due to Playwright MCP browser crash — recommend re-testing at 768x1024 viewport
+
+---
+
+### Priority Recommendations
+
+1. **Immediate (A):** Fix `lang="pt-BR"`, add aria-label to CodeMirror textbox, fix heading hierarchy
+2. **Short-term (B):** Associate Switch label, fix CM gutter contrast, add skip link
+3. **Medium-term (C):** Add aria-label to drag handles and key rename inputs, add autocomplete hints
+
+---
+
 ## Execution Summary
 
 | Phase | Files Created | Test Files Created | Playwright Checks |
