@@ -604,6 +604,34 @@ All services must be resolved through the Inversify container. No component or s
 
 ---
 
+## QA Bug Report (Playwright Testing — Live Site)
+
+The following bugs were found during QA testing of https://jsonvisualeditor.com/ using Playwright MCP:
+
+### Bug 1: NumberField not disabled in edit mode
+- **Severity:** Medium
+- **Location:** `src/components/atoms/value-input/ValueInput.tsx` (lines 41-49) and `src/components/atoms/number-field/NumberField.tsx`
+- **Description:** When "Editar JSON" mode is activated, the NumberField input remains visually interactive and editable. All other tree inputs (key rename, string value, boolean value, type selectors, delete buttons) correctly become disabled, but the NumberField does not. The `ValueInput` component passes `disabled={locked}` to string `TextField` and boolean `Select`, but does NOT pass `locked` to `NumberField`. Furthermore, `NumberField` itself does not accept a `disabled` or `locked` prop.
+- **Impact:** Users can type into the number field during edit mode, which could cause unexpected state changes (even though onChange is guarded, the visual state is misleading).
+- **Expected:** NumberField should be visually disabled (greyed out, non-interactive) during edit mode.
+- **Verification:** Enter edit mode → observe NumberField input is still active while other fields are disabled.
+
+### Bug 2: AddFieldForm fields not disabled in edit mode
+- **Severity:** Low (mobile only)
+- **Location:** `src/components/molecules/add-field-form/AddFieldForm.tsx`
+- **Description:** On mobile, the AddFieldForm's input fields (target selector, type selector, name input, value input, null toggle Switch) remain interactive during edit mode. Only the "Adicionar" button is disabled via `disabled={!selectedTarget || editingJson}` (line 135). The form fields themselves have no `disabled={editingJson}` binding.
+- **Impact:** Users can modify form field selections during edit mode, though clicking "Adicionar" is blocked. Tab navigation could reach hidden/disabled-unexpected fields.
+- **Expected:** All form fields in AddFieldForm should be disabled when `editingJson` is true, matching the cross-cutting requirement "AddFieldForm disabled in edit mode".
+
+### Bug 3: Baixar (Download) — potential race condition with URL.revokeObjectURL
+- **Severity:** Low
+- **Location:** `src/components/molecules/json-toolbar/useJsonToolbar.ts` (lines 59-68)
+- **Description:** The `handleDownload` function creates a blob URL, creates an anchor element, triggers `.click()`, then immediately calls `URL.revokeObjectURL(url)` on the next line. This synchronous revocation may cause the download to fail in some browsers because the blob URL could be revoked before the browser finishes fetching the blob data for the download.
+- **Impact:** The download may silently fail or be incomplete in certain browser environments. The toast "JSON baixado com sucesso!" still appears regardless of whether the download actually completed.
+- **Expected:** Move `URL.revokeObjectURL(url)` into a `setTimeout` or remove it entirely to ensure the download completes before revoking.
+
+---
+
 ## Execution Summary
 
 | Phase | Files Created | Test Files Created | Playwright Checks |
