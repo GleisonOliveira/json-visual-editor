@@ -95,7 +95,7 @@ export const codeMirrorLightTheme = EditorView.theme(
     '.cm-cursor': { borderLeftColor: '#aa3bff' },
     '.cm-gutters': {
       backgroundColor: '#ececef',
-      color: '#888',
+      color: '#767676',
       border: 'none',
     },
     '.cm-activeLineGutter': { backgroundColor: '#e2e2e8' },
@@ -121,7 +121,7 @@ export const codeMirrorDarkTheme = EditorView.theme(
     '.cm-cursor': { borderLeftColor: '#c084fc' },
     '.cm-gutters': {
       backgroundColor: '#1a1b22',
-      color: '#555',
+      color: '#767676',
       border: 'none',
     },
     '.cm-activeLineGutter': { backgroundColor: '#1f2030' },
@@ -153,4 +153,5 @@ const darkHighlight = HighlightStyle.define([
 ])
 
 export const codeMirrorLightSyntax = syntaxHighlighting(lightHighlight)
+
 export const codeMirrorDarkSyntax = syntaxHighlighting(darkHighlight)
