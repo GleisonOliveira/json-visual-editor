@@ -38,4 +38,11 @@ describe('JsonPanel', () => {
     renderJsonPanel()
     expect(screen.getByText('Modo edição manual — valide ou cancele para continuar')).toBeInTheDocument()
   })
+
+  it('CodeMirror has accessible name for JSON viewer', () => {
+    renderJsonPanel()
+    const cm = document.querySelector('[role="textbox"]')
+    expect(cm).toBeInTheDocument()
+    expect(cm).toHaveAttribute('aria-label', 'Visualização de JSON')
+  })
 })

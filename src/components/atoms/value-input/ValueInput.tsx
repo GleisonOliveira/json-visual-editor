@@ -42,6 +42,7 @@ export function ValueInput(props: {
     return (
       <NumberField
         value={value as number}
+        disabled={locked}
         onChange={(n) => {
           if (!locked) handleNumberChange(n)
         }}

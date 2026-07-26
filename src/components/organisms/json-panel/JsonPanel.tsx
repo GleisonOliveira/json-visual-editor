@@ -2,8 +2,12 @@ import type React from 'react'
 import { Box, Card, CardContent, CardHeader, Typography } from '@mui/material'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
+import { EditorView } from '@codemirror/view'
 import { JsonToolbar } from '../../molecules/json-toolbar/JsonToolbar'
 import { useJsonPanel } from './useJsonPanel'
+
+const readOnlyAriaLabel = EditorView.contentAttributes.of({ 'aria-label': 'Visualização de JSON' })
+const editAriaLabel = EditorView.contentAttributes.of({ 'aria-label': 'Editor de JSON' })
 
 /**
  * Organism: the right-panel CodeMirror-based JSON viewer/editor.
@@ -28,7 +32,7 @@ export function JsonPanel(): React.JSX.Element {
               value={editingText}
               theme="none"
               basicSetup={{ drawSelection: false }}
-              extensions={[json(), cmTheme, cmSyntax]}
+              extensions={[json(), cmTheme, cmSyntax, editAriaLabel]}
               onChange={handleEditorChange}
               style={{
                 fontSize: 14,
@@ -48,7 +52,7 @@ export function JsonPanel(): React.JSX.Element {
             value={jsonStr}
             theme="none"
             basicSetup={{ drawSelection: false }}
-            extensions={[json(), cmTheme, cmSyntax]}
+            extensions={[json(), cmTheme, cmSyntax, readOnlyAriaLabel]}
             editable={false}
             style={{ fontSize: 14, textAlign: 'left', border: '1px solid rgba(0,0,0,0.23)', borderRadius: 4, minHeight: 300 }}
           />

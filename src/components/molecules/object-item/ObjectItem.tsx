@@ -68,6 +68,8 @@ export function ObjectItem(props: {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
         <Box
           {...(!locked ? dragHandleProps : {})}
+          role="img"
+          aria-label="Arrastar para reordenar"
           sx={{ display: 'flex', alignItems: 'center', color: locked ? 'action.disabled' : 'text.secondary', cursor: locked ? 'default' : 'grab' }}
         >
           <GripVertical size={14} />
@@ -84,6 +86,7 @@ export function ObjectItem(props: {
           defaultValue={k}
           variant="outlined"
           disabled={locked}
+          slotProps={{ input: { 'aria-label': `Renomear chave ${k}` } }}
           sx={{ width: 120 }}
           onMouseDown={(e) => e.stopPropagation()}
           onBlur={(e) => {

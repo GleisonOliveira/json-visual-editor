@@ -63,7 +63,7 @@ export function useJsonToolbar(): {
     a.href = url
     a.download = 'data.json'
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
     setToast({ msg: 'JSON baixado com sucesso!', severity: 'success' })
   }, [jsonStr, setToast])
 

@@ -14,7 +14,35 @@ export default function App(): React.JSX.Element {
   return (
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
-      <Box component="main" sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+      <Box
+        component="a"
+        href="#main-content"
+        sx={{
+          position: 'absolute',
+          left: -9999,
+          top: 'auto',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          zIndex: 9999,
+          '&:focus': {
+            position: 'fixed',
+            left: 8,
+            top: 8,
+            width: 'auto',
+            height: 'auto',
+            p: 1,
+            bgcolor: 'primary.main',
+            color: '#fff',
+            borderRadius: 1,
+            textDecoration: 'none',
+            fontWeight: 700,
+          },
+        }}
+      >
+        Pular para o conteúdo
+      </Box>
+      <Box component="main" id="main-content" sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
         <TopBar />
         <Grid container spacing={2} sx={{ alignItems: 'stretch', p: 2 }}>
           <Grid size={{ xs: 12, md: 6 }}>

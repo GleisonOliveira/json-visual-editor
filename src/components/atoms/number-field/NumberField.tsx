@@ -6,7 +6,7 @@ import { TextField } from '@mui/material'
  * Allows typing "1." or "-" without immediately converting, and commits the final
  * numeric value on blur. Falls back to 0 for invalid input.
  */
-export function NumberField({ value, onChange }: { value: number; onChange: (n: number) => void }): React.JSX.Element {
+export function NumberField({ value, onChange, disabled }: { value: number; onChange: (n: number) => void; disabled?: boolean }): React.JSX.Element {
   const [text, setText] = useState(String(value ?? 0))
   const prevValueRef = React.useRef(value)
 
@@ -28,6 +28,7 @@ export function NumberField({ value, onChange }: { value: number; onChange: (n: 
       value={text}
       variant="outlined"
       inputMode="decimal"
+      disabled={disabled}
       sx={{ flex: 1 }}
       onChange={(e) => setText(e.target.value)}
       onBlur={(e) => {

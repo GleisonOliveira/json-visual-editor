@@ -116,4 +116,10 @@ describe('ArrayItem', () => {
     renderArrayItem(0, { a: 1 })
     expect(screen.getByText('Arraste itens para cá')).toBeInTheDocument()
   })
+
+  it('drag handle has accessible name', () => {
+    renderArrayItem(0, 'value')
+    const dragHandle = screen.getByRole('img', { name: 'Arrastar para reordenar' })
+    expect(dragHandle).toBeInTheDocument()
+  })
 })

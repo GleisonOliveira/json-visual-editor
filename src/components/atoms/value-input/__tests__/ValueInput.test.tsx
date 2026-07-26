@@ -63,9 +63,21 @@ describe('ValueInput', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('disabled when locked=true', () => {
+  it('disabled when locked=true for string type', () => {
     renderValueInput('hello', ['key'], 'string', true)
     const input = screen.getByRole('textbox')
     expect(input).toBeDisabled()
+  })
+
+  it('disabled when locked=true for number type', () => {
+    renderValueInput(42, ['key'], 'number', true)
+    const input = screen.getByRole('textbox')
+    expect(input).toBeDisabled()
+  })
+
+  it('disabled when locked=true for boolean type', () => {
+    renderValueInput(true, ['key'], 'boolean', true)
+    const select = screen.getByRole('combobox')
+    expect(select).toHaveAttribute('aria-disabled', 'true')
   })
 })

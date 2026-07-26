@@ -30,7 +30,7 @@ export function AddFieldForm(): React.JSX.Element {
 
   return (
     <>
-      <Typography variant="subtitle2">Adicionar dados ao JSON</Typography>
+      <Typography variant="subtitle2" component="h2">Adicionar dados ao JSON</Typography>
       <Grid container spacing={1.25}>
         <Grid size={{ xs: 12, md: 'grow' }}>
           <FormControl size="small" fullWidth>
@@ -40,7 +40,7 @@ export function AddFieldForm(): React.JSX.Element {
               value={selectedTarget?.label ?? 'Início'}
               label="Inserir em"
               onChange={(e) => setTargetLabel(e.target.value)}
-              disabled={targets.length === 0}
+              disabled={targets.length === 0 || editingJson}
               sx={{ '& .MuiSelect-select': { textAlign: 'left' } }}
             >
               {targets.map((t) => (
@@ -57,7 +57,7 @@ export function AddFieldForm(): React.JSX.Element {
               labelId="fieldType-label"
               value={fieldType}
               label="Tipo"
-              disabled={valueIsNull}
+              disabled={valueIsNull || editingJson}
               onChange={(e) => {
                 const nextType = e.target.value as import('../../../types').FieldType
                 setFieldType(nextType)
@@ -92,27 +92,28 @@ export function AddFieldForm(): React.JSX.Element {
             variant="outlined"
             size="small"
             fullWidth
-            disabled={selectedTarget?.kind === 'array'}
+            disabled={selectedTarget?.kind === 'array' || editingJson}
             helperText={selectedTarget?.kind === 'array' ? 'Pai é um array' : (nameError ?? ' ')}
             error={!!nameError}
+            autoComplete="off"
           />
         </Grid>
 
         {fieldType === 'string' && (
           <Grid size={{ xs: 12, md: 'grow' }}>
-            <TextField label="Valor" value={valueText} onChange={(e) => setValueText(e.target.value)} size="small" variant="outlined" fullWidth disabled={valueIsNull} error={!!valueError} helperText={valueError ?? ' '} />
+            <TextField label="Valor" value={valueText} onChange={(e) => setValueText(e.target.value)} size="small" variant="outlined" fullWidth disabled={valueIsNull || editingJson} error={!!valueError} helperText={valueError ?? ' '} autoComplete="off" />
           </Grid>
         )}
 
         {fieldType === 'number' && (
           <Grid size={{ xs: 12, md: 'grow' }}>
-            <TextField label="Valor" value={valueNumberText} onChange={(e) => setValueNumberText(e.target.value)} size="small" variant="outlined" fullWidth disabled={valueIsNull} inputMode="decimal" error={!!valueError} helperText={valueError ?? ' '} />
+            <TextField label="Valor" value={valueNumberText} onChange={(e) => setValueNumberText(e.target.value)} size="small" variant="outlined" fullWidth disabled={valueIsNull || editingJson} inputMode="decimal" error={!!valueError} helperText={valueError ?? ' '} autoComplete="off" />
           </Grid>
         )}
 
         {fieldType === 'boolean' && (
           <Grid size={{ xs: 12, md: 'grow' }}>
-            <FormControl size="small" fullWidth disabled={valueIsNull}>
+            <FormControl size="small" fullWidth disabled={valueIsNull || editingJson}>
               <InputLabel id="bool-label">Valor</InputLabel>
               <Select labelId="bool-label" value={String(valueBoolean)} label="Valor" onChange={(e) => setValueBoolean(e.target.value === 'true')} sx={{ '& .MuiSelect-select': { textAlign: 'left' } }}>
                 <MenuItem value="true">true</MenuItem>
@@ -124,7 +125,7 @@ export function AddFieldForm(): React.JSX.Element {
 
         <Grid size={{ xs: 12, md: 'grow' }}>
           <Grid>
-            <Switch checked={valueIsNull} onChange={(e) => setValueIsNull(e.target.checked)} />
+            <Switch checked={valueIsNull} onChange={(e) => setValueIsNull(e.target.checked)} disabled={editingJson} slotProps={{ input: { 'aria-label': 'Nulo' } }} />
             <Typography component="span" variant="body2">Nulo</Typography>
           </Grid>
         </Grid>

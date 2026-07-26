@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ThemeProvider, createTheme } from '@mui/material'
@@ -68,5 +68,16 @@ describe('JsonToolbar', () => {
     renderToolbar()
     await user.click(screen.getByText('Validar'))
     expect(useUiStore.getState().toast?.severity).toBe('error')
+  })
+
+  it('Baixar uses setTimeout to revoke object URL', async () => {
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL')
+    renderToolbar()
+    const baixarBtn = screen.getByText('Baixar')
+    baixarBtn.click()
+    expect(revokeSpy).not.toHaveBeenCalled()
+    await new Promise((r) => setTimeout(r, 100))
+    expect(revokeSpy).toHaveBeenCalled()
+    revokeSpy.mockRestore()
   })
 })

@@ -94,4 +94,16 @@ describe('ObjectItem', () => {
     renderObjectItem('nested', { a: 1 })
     expect(screen.getByText('Arraste itens para cá')).toBeInTheDocument()
   })
+
+  it('drag handle has accessible name', () => {
+    renderObjectItem('test', 'value')
+    const dragHandle = screen.getByRole('img', { name: 'Arrastar para reordenar' })
+    expect(dragHandle).toBeInTheDocument()
+  })
+
+  it('key rename input has accessible name', () => {
+    renderObjectItem('myKey', 'hello')
+    const input = screen.getByRole('textbox', { name: /Renomear chave myKey/i })
+    expect(input).toBeInTheDocument()
+  })
 })

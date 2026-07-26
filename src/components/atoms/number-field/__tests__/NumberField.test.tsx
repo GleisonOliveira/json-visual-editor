@@ -6,10 +6,10 @@ import { NumberField } from '../NumberField'
 
 const theme = createTheme()
 
-function renderNumberField(value: number, onChange: (n: number) => void): void {
+function renderNumberField(value: number, onChange: (n: number) => void, disabled = false): void {
   render(
     <ThemeProvider theme={theme}>
-      <NumberField value={value} onChange={onChange} />
+      <NumberField value={value} onChange={onChange} disabled={disabled} />
     </ThemeProvider>
   )
 }
@@ -60,5 +60,17 @@ describe('NumberField', () => {
     await user.clear(input)
     await user.type(input, '1.')
     expect(input).toHaveValue('1.')
+  })
+
+  it('disabled when disabled=true', () => {
+    renderNumberField(42, () => {}, true)
+    const input = screen.getByRole('textbox')
+    expect(input).toBeDisabled()
+  })
+
+  it('renders enabled when disabled=false', () => {
+    renderNumberField(42, () => {}, false)
+    const input = screen.getByRole('textbox')
+    expect(input).toBeEnabled()
   })
 })

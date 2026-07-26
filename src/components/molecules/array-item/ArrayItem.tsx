@@ -68,6 +68,8 @@ export function ArrayItem(props: {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'nowrap' }}>
         <Box
           {...(!locked ? dragHandleProps : {})}
+          role="img"
+          aria-label="Arrastar para reordenar"
           sx={{ display: 'flex', alignItems: 'center', color: locked ? 'action.disabled' : 'text.secondary', cursor: locked ? 'default' : 'grab' }}
         >
           <GripVertical size={14} />

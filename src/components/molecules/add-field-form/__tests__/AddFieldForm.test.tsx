@@ -66,4 +66,42 @@ describe('AddFieldForm', () => {
     const json = useJsonStore.getState().jsonValue as Record<string, unknown>
     expect(json['myField']).toBe('hello')
   })
+
+  it('all form fields disabled when editingJson is true', () => {
+    useUiStore.getState().startEditing('{}')
+    renderAddFieldForm()
+
+    const comboboxes = screen.getAllByRole('combobox')
+
+    for (const cb of comboboxes) {
+      expect(cb).toHaveAttribute('aria-disabled', 'true')
+    }
+
+    const nameInput = screen.getByPlaceholderText('nome do campo')
+    expect(nameInput).toBeDisabled()
+
+    const addBtn = screen.getByText('Adicionar')
+    expect(addBtn).toBeDisabled()
+  })
+
+  it('switch toggle has accessible name', () => {
+    renderAddFieldForm()
+    const switchEl = screen.getByRole('switch')
+    const input = switchEl.tagName === 'INPUT' ? switchEl : switchEl.querySelector('input')
+    expect(input).toBeTruthy()
+    expect(input).toHaveAttribute('aria-label', 'Nulo')
+  })
+
+  it('heading uses h2 element for proper hierarchy', () => {
+    renderAddFieldForm()
+    const heading = screen.getByRole('heading', { name: /adicionar dados ao json/i })
+    expect(heading.tagName).toBe('H2')
+  })
+
+  it('form fields have autocomplete off', () => {
+    renderAddFieldForm()
+    useUiStore.getState().setFieldName('test')
+    const nameInput = screen.getByPlaceholderText('nome do campo')
+    expect(nameInput).toHaveAttribute('autocomplete', 'off')
+  })
 })
