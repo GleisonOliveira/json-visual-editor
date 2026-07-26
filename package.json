@@ -8,12 +8,14 @@
     "build": "npm run check && vite build",
     "lint": "eslint . --max-warnings 0",
     "lint:check": "eslint . --max-warnings 0",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.e2e.json",
     "check": "npm run typecheck && npm run lint:check",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",
@@ -32,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

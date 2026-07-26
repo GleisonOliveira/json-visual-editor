@@ -76,7 +76,7 @@ export function ObjectItem(props: {
         </Box>
         <Tooltip title={`Deletar ${k}`} arrow>
           <span>
-            <IconButton size="small" color="error" disabled={locked} onClick={(e) => { e.stopPropagation(); const o = { ...obj }; delete o[k]; handleUpdate(parentPath, o) }}>
+            <IconButton size="small" color="error" disabled={locked} aria-label={`Deletar ${k}`} onClick={(e) => { e.stopPropagation(); const o = { ...obj }; delete o[k]; handleUpdate(parentPath, o) }}>
               <Trash2 size={16} />
             </IconButton>
           </span>
