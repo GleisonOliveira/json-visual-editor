@@ -20,8 +20,10 @@
 12. [Flow 10 — Change Node Type](#12-flow-10--change-node-type)
 13. [Flow 11 — Delete Node](#13-flow-11--delete-node)
 14. [Cross-Cutting: Locking During JSON Edit](#14-cross-cutting-locking-during-json-edit)
-15. [Component Hierarchy](#15-component-hierarchy)
+15. [Component Hierarchy (Atomic Design)](#15-component-hierarchy-atomic-design)
 16. [Store Responsibilities](#16-store-responsibilities)
+17. [Service Layer](#17-service-layer)
+18. [Documentation](#18-documentation)
 
 ---
 
@@ -171,7 +173,7 @@ flowchart TD
     I --> J[New node visible in tree]
 ```
 
-**Components involved:** `VisualEditor` (palette), `ObjectItem`, `ArrayItem`, `ContainerDropZone`, `useDndItem`
+**Components involved:** `VisualEditor` (organism), `PalettePanel` (molecule), `PaletteButton` (atom), `ObjectItem` (molecule), `ArrayItem` (molecule), `ContainerDropZone` (atom)
 
 **Store actions:** `jsonStore.handleInsert`, `uiStore.expandPath`
 
@@ -200,7 +202,7 @@ flowchart TD
     N --> O[New field visible in tree + JSON panel updates]
 ```
 
-**Components involved:** `AddFieldForm`, `NodeEditor`
+**Components involved:** `AddFieldForm` (molecule), `NodeEditor` (organism)
 
 **Store actions:** `jsonStore.handleApplyInsert`, `uiStore.expandPath`, `uiStore.setFieldName`, `uiStore.setFieldType`, `uiStore.setTargetLabel`, `uiStore.setValueText`, `uiStore.setValueNumberText`, `uiStore.setValueBoolean`, `uiStore.setValueIsNull`, `uiStore.setNameError`, `uiStore.setValueError`
 
@@ -226,7 +228,7 @@ flowchart TD
     J --> K[JsonPanel re-renders with new JSON]
 ```
 
-**Components involved:** `NodeEditor`, `InlineNodeEditor`, `NumberField`
+**Components involved:** `NodeEditor` (organism), `InlineNodeEditor` (molecule), `TypeSelector` (atom), `ValueInput` (atom), `NumberField` (atom)
 
 **Store actions:** `jsonStore.handleUpdate`
 
@@ -245,7 +247,7 @@ flowchart TD
     F --> H[JSON tree updated]
 ```
 
-**Components involved:** `ObjectItem`
+**Components involved:** `ObjectItem` (molecule)
 
 **Store actions:** `jsonStore.handleUpdate`
 
@@ -268,7 +270,7 @@ flowchart TD
     H --> K
 ```
 
-**Components involved:** `ObjectItem`, `ArrayItem`, `ContainerDropZone`, `useDndItem`
+**Components involved:** `ObjectItem` (molecule), `ArrayItem` (molecule), `ContainerDropZone` (atom)
 
 **Store actions:** `jsonStore.handleMove`, `jsonStore.handleInsert`
 
@@ -301,7 +303,7 @@ flowchart TD
     H --> T[User can also type/paste JSON]
 ```
 
-**Components involved:** `JsonPanel`, `VisualEditor` (locked state), `NodeEditor` (locked state)
+**Components involved:** `JsonPanel` (organism), `JsonToolbar` (molecule), `VisualEditor` (organism, locked state), `NodeEditor` (organism, locked state)
 
 **Store actions:** `uiStore.startEditing`, `uiStore.cancelEditing`, `uiStore.setEditingText`, `uiStore.setEditError`, `jsonStore.setJsonValue`, `uiStore.setToast`
 
@@ -324,7 +326,7 @@ flowchart TD
     J --> K[Toast: Arquivo baixado com sucesso]
 ```
 
-**Components involved:** `JsonPanel`
+**Components involved:** `JsonPanel` (organism), `JsonToolbar` (molecule)
 
 **Store actions:** `uiStore.setToast`
 
@@ -342,7 +344,7 @@ flowchart TD
     E --> G[All MUI components re-theme]
 ```
 
-**Components involved:** `TopBar`, `App`
+**Components involved:** `TopBar` (organism), `App`
 
 **Store actions:** `uiStore.toggleMode`
 
@@ -366,7 +368,7 @@ flowchart TD
     F --> J
 ```
 
-**Components involved:** `NodeEditor`, `ObjectItem`, `ArrayItem`
+**Components involved:** `NodeEditor` (organism), `ObjectItem` (molecule), `ArrayItem` (molecule)
 
 **Store actions:** `uiStore.toggleExpand`, `uiStore.expandAll`, `uiStore.collapseAll`
 
@@ -393,7 +395,7 @@ flowchart TD
     J --> K[Node re-renders with new type + value editor]
 ```
 
-**Components involved:** `NodeEditor` (root), `InlineNodeEditor`
+**Components involved:** `NodeEditor` (organism, root), `InlineNodeEditor` (molecule), `TypeSelector` (atom)
 
 **Store actions:** `jsonStore.handleUpdate`
 
@@ -412,7 +414,7 @@ flowchart TD
     F --> G[JsonPanel re-renders]
 ```
 
-**Components involved:** `ObjectItem`, `ArrayItem`
+**Components involved:** `ObjectItem` (molecule), `ArrayItem` (molecule)
 
 **Store actions:** `jsonStore.handleUpdate`
 
@@ -434,25 +436,35 @@ When `editingJson === true` in `uiStore`:
 
 ---
 
-## 15. Component Hierarchy
+## 15. Component Hierarchy (Atomic Design)
+
+Components follow atomic design: atoms (smallest UI units), molecules (composed atoms with logic), organisms (complex UI sections). Each component uses the template+composable pattern (`ComponentName.tsx` + `useComponentName.ts`). All services are resolved via Inversify DI container (`useContainer()`).
 
 ```
 App
-├── TopBar                              [uiStore]
+├── TopBar                              [uiStore]                             organism
 ├── Grid (2 columns / stacked)
-│   ├── VisualEditor                    [uiStore]
-│   │   ├── AddFieldForm                [uiStore, jsonStore]  ← mobile only
-│   │   └── NodeEditor                  [jsonStore, uiStore]
-│   │       ├── ObjectItem (recursive)  [jsonStore, useDndItem]
-│   │       │   ├── InlineNodeEditor    [jsonStore]
-│   │       │   │   └── NumberField     (local state only)
-│   │       │   └── ContainerDropZone   [jsonStore, uiStore]
-│   │       ├── ArrayItem (recursive)   [jsonStore, useDndItem]
-│   │       │   ├── InlineNodeEditor    [jsonStore]
-│   │       │   │   └── NumberField     (local state only)
-│   │       │   └── ContainerDropZone   [jsonStore, uiStore]
-│   │       └── ContainerDropZone       [jsonStore, uiStore]  ← root level
-│   └── JsonPanel                       [uiStore, jsonStore]
+│   ├── VisualEditor                    [uiStore]                             organism
+│   │   ├── PalettePanel                [uiStore]           ← desktop only   molecule
+│   │   │   └── PaletteButton (×6)      [uiStore]                            atom
+│   │   ├── AddFieldForm                [uiStore, jsonStore] ← mobile only  molecule
+│   │   └── NodeEditor                  [jsonStore, uiStore]                 organism
+│   │       ├── TypeSelector (root)     [jsonStore]                          atom
+│   │       ├── ObjectItem (recursive)  [jsonStore, uiStore]                 molecule
+│   │       │   ├── InlineNodeEditor    [jsonStore]                          molecule
+│   │       │   │   ├── TypeSelector    [jsonStore]                          atom
+│   │       │   │   └── ValueInput      [jsonStore]                          atom
+│   │       │   ├── ObjectItem (nested) [recursive]
+│   │       │   ├── ArrayItem (nested)  [recursive]
+│   │       │   └── ContainerDropZone   [jsonStore, uiStore]                 atom
+│   │       ├── ArrayItem (recursive)   [jsonStore, uiStore]                 molecule
+│   │       │   ├── InlineNodeEditor    [jsonStore]                          molecule
+│   │       │   ├── ObjectItem (nested) [recursive]
+│   │       │   ├── ArrayItem (nested)  [recursive]
+│   │       │   └── ContainerDropZone   [jsonStore, uiStore]                 atom
+│   │       └── ContainerDropZone       [jsonStore, uiStore] ← root level   atom
+│   └── JsonPanel                       [uiStore, jsonStore]                 organism
+│       ├── JsonToolbar                 [uiStore, jsonStore]                 molecule
 │       └── CodeMirror editor
 └── Snackbar + Alert (toast)            [uiStore]
 ```
@@ -462,6 +474,8 @@ App
 ## 16. Store Responsibilities
 
 ### `jsonStore` — JSON document state
+
+Actions are created via a factory pattern: `createJsonActions(container)` receives the Inversify container and resolves `JsonMutationService` internally. See [docs/store.md](../docs/store.md) for details.
 
 | Action | Purpose |
 |--------|---------|
@@ -477,11 +491,39 @@ App
 
 | Category | Properties |
 |----------|------------|
-| Theme | `mode`, `toggleMode()` |
+| Theme | `mode`, `toggleMode()` — light/dark, persisted to localStorage |
 | Tree expansion | `expanded`, `toggleExpand`, `expandPath`, `collapseAll`, `expandAll` |
 | JSON editing mode | `editingJson`, `editingText`, `editError`, `startEditing`, `cancelEditing` |
 | Toast | `toast`, `setToast` |
 | AddFieldForm fields | `fieldName`, `fieldType`, `targetLabel`, `valueText`, `valueNumberText`, `valueBoolean`, `valueIsNull`, `nameError`, `valueError` + setters |
+
+---
+
+## 17. Service Layer
+
+All pure business logic is extracted into service classes with constructor DI. Services are registered in the Inversify container as singletons. See [docs/services.md](../docs/services.md) for details.
+
+| Service | Responsibility |
+|---------|---------------|
+| `JsonTreeService` | Pure tree traversal: get, set, remove, insert at path, type guards |
+| `JsonMutationService` | Tree mutations: move, insert from palette, apply form insert |
+| `JsonValidationService` | Form validation and JSON string parsing |
+| `ClipboardService` | Wrapper around `navigator.clipboard.writeText()` |
+| `FileDownloadService` | Browser file download via Blob + anchor click |
+
+---
+
+## 18. Documentation
+
+| File | Contents |
+|------|----------|
+| `AGENTS.md` | Project overview, stack, folder structure, DI/component/service/store/testing conventions |
+| `docs/architecture.md` | DI container, service wiring, data flow, responsive layout |
+| `docs/components.md` | Atomic design, template+composable pattern, component tree, adding new components |
+| `docs/testing.md` | Vitest setup, test conventions, ContainerProvider pattern, writing behavioral tests |
+| `docs/services.md` | Service classes, DI tokens, constructor injection, adding new services |
+| `docs/store.md` | Store conventions, action splitting, domain separation, adding new stores |
+| `doc/user-flows-mapping.md` | This file — complete user flows, actions, and scenarios mapping |
 
 ---
 

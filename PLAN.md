@@ -580,27 +580,27 @@ All services must be resolved through the Inversify container. No component or s
 ## Phase 5: Documentation
 
 **Objective:** Update AGENTS.md (English) + create area-specific docs.
-
 ### Tasks
 
-- [ ] 5.1. Rewrite `AGENTS.md` in English: project overview, stack, folder structure (atomic design), DI conventions, service conventions, template/composable conventions, testing conventions, links to docs/
-- [ ] 5.2. Create `docs/architecture.md`: DI container, service wiring, overall architecture
-- [ ] 5.3. Create `docs/components.md`: atomic design, template+composable pattern, how to add new components
-- [ ] 5.4. Create `docs/testing.md`: vitest setup, test conventions, how to write behavioral tests, renderWithProviders pattern
-- [ ] 5.5. Create `docs/services.md`: service classes, DI tokens, how to add new services, constructor injection pattern
-- [ ] 5.6. Create `docs/store.md`: store conventions, action splitting, domain separation, how to add new stores
-- [ ] 5.7. Update `doc/user-flows-mapping.md` with the new flows/components
+- [x] 5.1. Rewrite `AGENTS.md` in English: project overview, stack, folder structure (atomic design), DI conventions, service conventions, template/composable conventions, testing conventions, links to docs/
+- [x] 5.2. Create `docs/architecture.md`: DI container, service wiring, overall architecture
+- [x] 5.3. Create `docs/components.md`: atomic design, template+composable pattern, how to add new components
+- [x] 5.4. Create `docs/testing.md`: vitest setup, test conventions, how to write behavioral tests, renderWithProviders pattern
+- [x] 5.5. Create `docs/services.md`: service classes, DI tokens, how to add new services, constructor injection pattern
+- [x] 5.6. Create `docs/store.md`: store conventions, action splitting, domain separation, how to add new stores
+- [x] 5.7. Update `doc/user-flows-mapping.md` with the new flows/components
 
 ### Acceptance Criteria
-- [ ] `AGENTS.md` is complete, accurate, in English
-- [ ] 5 docs/ files exist and are comprehensive
-- [ ] All code examples in docs match actual codebase
-- [ ] All docs reference https://jsonvisualeditor.com/ for behavior verification
-- [ ] `npm run test` passes
-- [ ] `npm run typecheck` passes
-- [ ] `npm run lint` passes
-- [ ] `npm run build` passes
-- [ ] Validate `doc/user-flows-mapping.md` using playright mcp in the url `https://mermaid.live/edit` (past the content of chart into editor and validade if it`s parse correctly)
+
+- [x] `AGENTS.md` is complete, accurate, in English
+- [x] 5 docs/ files exist and are comprehensive
+- [x] All code examples in docs match actual codebase
+- [x] All docs reference https://jsonvisualeditor.com/ for behavior verification
+- [x] `npm run test` passes
+- [x] `npm run typecheck` passes
+- [x] `npm run lint` passes
+- [x] `npm run build` passes
+- [x] Validate `doc/user-flows-mapping.md` using playright mcp in the url `https://mermaid.live/edit` (past the content of chart into editor and validade if it`s parse correctly)
 
 ---
 
