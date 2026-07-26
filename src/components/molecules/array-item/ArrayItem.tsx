@@ -76,7 +76,7 @@ export function ArrayItem(props: {
         </Box>
         <Tooltip title={`Deletar [${i}]`} arrow>
           <span>
-            <IconButton size="small" color="error" disabled={locked} onClick={(e) => { e.stopPropagation(); const a = [...arr]; a.splice(i, 1); handleUpdate(parentPath, a) }}>
+            <IconButton size="small" color="error" disabled={locked} aria-label={`Deletar [${i}]`} onClick={(e) => { e.stopPropagation(); const a = [...arr]; a.splice(i, 1); handleUpdate(parentPath, a) }}>
               <Trash2 size={16} />
             </IconButton>
           </span>
