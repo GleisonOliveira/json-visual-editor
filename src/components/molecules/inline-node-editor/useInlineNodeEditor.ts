@@ -13,7 +13,7 @@ import type { JsonValue, NullableFieldType } from '../../../types'
  */
 export function useInlineNodeEditor(value: JsonValue): { nodeType: NullableFieldType } {
   const container = useContainer()
-  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const treeSvc = useMemo(() => container.get<JsonTreeService>(TYPES.JsonTreeService), [container])
   const { isArray, isObject } = treeSvc
 
   const nodeType: NullableFieldType = useMemo(() => {

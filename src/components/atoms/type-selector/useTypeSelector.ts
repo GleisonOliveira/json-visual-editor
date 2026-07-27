@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useJsonStore } from '../../../store/jsonStore'
 import { useContainer } from '../../../useContainer'
 import { TYPES } from '../../../core/types'
@@ -20,7 +20,7 @@ export function useTypeSelector(
 ): { setNodeType: (nextType: NullableFieldType) => void } {
   const { handleUpdate } = useJsonStore()
   const container = useContainer()
-  const mutationSvc = container.get<JsonMutationService>(TYPES.JsonMutationService)
+  const mutationSvc = useMemo(() => container.get<JsonMutationService>(TYPES.JsonMutationService), [container])
 
   const setNodeType = useCallback(
     (nextType: NullableFieldType): void => {

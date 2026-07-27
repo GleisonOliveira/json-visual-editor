@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useCallback } from 'react'
 import { Alert, Box, Grid, Snackbar } from '@mui/material'
 import { ThemeProvider, CssBaseline } from '@mui/material'
 import { lightTheme, darkTheme } from './theme'
@@ -10,6 +11,7 @@ import { JsonPanel } from './components/organisms/json-panel/JsonPanel'
 export default function App(): React.JSX.Element {
   const { mode, toast, setToast } = useUiStore()
   const muiTheme = mode === 'dark' ? darkTheme : lightTheme
+  const handleToastClose = useCallback(() => setToast(null), [setToast])
 
   return (
     <ThemeProvider theme={muiTheme}>
@@ -55,10 +57,10 @@ export default function App(): React.JSX.Element {
         <Snackbar
           open={!!toast}
           autoHideDuration={4000}
-          onClose={() => setToast(null)}
+          onClose={handleToastClose}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
-          <Alert severity={toast?.severity ?? 'info'} onClose={() => setToast(null)} variant="filled">
+          <Alert severity={toast?.severity ?? 'info'} onClose={handleToastClose} variant="filled">
             {toast?.msg}
           </Alert>
         </Snackbar>

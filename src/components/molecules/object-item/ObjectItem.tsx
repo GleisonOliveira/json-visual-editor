@@ -1,32 +1,20 @@
 import type React from 'react'
+import { memo, useMemo } from 'react'
 import { Box, IconButton, TextField, Tooltip } from '@mui/material'
 import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
 import { InlineNodeEditor } from '../inline-node-editor/InlineNodeEditor'
 import { ContainerDropZone } from '../../atoms/container-drop-zone/ContainerDropZone'
 import { useDndItem } from '../../../hooks/useDndItem'
 import { useObjectItem } from './useObjectItem'
-import { useJsonStore } from '../../../store/jsonStore'
 import { useContainer } from '../../../useContainer'
 import { TYPES } from '../../../core/types'
 import type { JsonTreeService } from '../../../services/JsonTreeService'
 import type { JsonValue, JsonObject } from '../../../types'
+import { expandInserted } from '../../../lib/expandInserted'
+import { pathsEqual } from '../../../lib/pathsEqual'
+import { setsEqual } from '../../../lib/setsEqual'
 
-function expandInserted(parentPath: Array<string | number>, expandPathFn: (p: Array<string | number>) => void): void {
-  const newJson = useJsonStore.getState().jsonValue
-  let node: JsonValue = newJson
-  for (const seg of parentPath) node = (node as Record<string | number, JsonValue>)[seg] as JsonValue
-  let newKey: string | number
-  if (Array.isArray(node)) newKey = node.length - 1
-  else newKey = Object.keys(node as object).at(-1)!
-  expandPathFn([...parentPath, newKey])
-}
-
-/**
- * Molecule: renders a single key-value pair inside an object node.
- * Features: key renaming, delete, drag-and-drop reordering, expand/collapse for nested complex values,
- * and a nested ContainerDropZone when expanded.
- */
-export function ObjectItem(props: {
+interface ObjectItemProps {
   objKey: string
   value: JsonValue
   parentPath: Array<string | number>
@@ -36,11 +24,32 @@ export function ObjectItem(props: {
   expandPath: (path: Array<string | number>) => void
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
-}): React.JSX.Element {
+}
+
+function compareObjectItemProps(prev: ObjectItemProps, next: ObjectItemProps): boolean {
+  return (
+    prev.objKey === next.objKey
+    && prev.value === next.value
+    && prev.locked === next.locked
+    && prev.obj === next.obj
+    && setsEqual(prev.expanded, next.expanded)
+    && prev.toggleExpand === next.toggleExpand
+    && prev.expandPath === next.expandPath
+    && prev.renderChildren === next.renderChildren
+    && pathsEqual(prev.parentPath, next.parentPath)
+  )
+}
+
+/**
+ * Molecule: renders a single key-value pair inside an object node.
+ * Features: key renaming, delete, drag-and-drop reordering, expand/collapse for nested complex values,
+ * and a nested ContainerDropZone when expanded.
+ */
+export const ObjectItem = memo(function ObjectItem(props: ObjectItemProps): React.JSX.Element {
   const { objKey: k, value: v, parentPath, obj, expanded, toggleExpand, expandPath, renderChildren, locked } = props
   const { handleUpdate, handleMove, handleInsert } = useObjectItem()
   const container = useContainer()
-  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const treeSvc = useMemo(() => container.get<JsonTreeService>(TYPES.JsonTreeService), [container])
   const { isComplexValue, isArray, isPalettePayload, isAncestorOrEqual } = treeSvc
   const itemPath = [...parentPath, k]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath, k)
@@ -116,4 +125,4 @@ export function ObjectItem(props: {
       )}
     </Box>
   )
-}
+}, compareObjectItemProps)

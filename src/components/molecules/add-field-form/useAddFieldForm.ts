@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, startTransition } from 'react'
-import { z } from 'zod'
 import { useUiStore } from '../../../store/uiStore'
 import { useJsonStore } from '../../../store/jsonStore'
 import { useContainer } from '../../../useContainer'
 import { TYPES } from '../../../core/types'
 import type { JsonTreeService } from '../../../services/JsonTreeService'
+import type { JsonValidationService } from '../../../services/JsonValidationService'
 import type { FieldType } from '../../../types'
 
 /**
@@ -40,13 +40,13 @@ export function useAddFieldForm(): {
     valueText, valueNumberText, valueBoolean, valueIsNull,
     setFieldName, setFieldType, setTargetLabel, setNameError, setValueError,
     setValueText, setValueNumberText, setValueBoolean, setValueIsNull,
-    editingJson,
+    editingJson, expandPath,
   } = useUiStore()
 
   const { jsonValue, handleApplyInsert } = useJsonStore()
-  const { expandPath } = useUiStore()
   const container = useContainer()
-  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const treeSvc = useMemo(() => container.get<JsonTreeService>(TYPES.JsonTreeService), [container])
+  const validationSvc = useMemo(() => container.get<JsonValidationService>(TYPES.JsonValidationService), [container])
 
   const targets = useMemo(() => treeSvc.enumerateTargets(jsonValue ?? {}), [jsonValue, treeSvc])
 
@@ -76,31 +76,20 @@ export function useAddFieldForm(): {
     setNameError(null)
     setValueError(null)
     const parentIsArray = selectedTarget.kind === 'array'
-    const schema = z
-      .object({
-        name: parentIsArray
-          ? z.string().trim().optional()
-          : z.string().trim().min(1, 'Informe um nome.'),
-        type: z.enum(['string', 'number', 'boolean', 'object', 'array']),
-        isNull: z.boolean(),
-        valueText: z.string(),
-        valueNumberText: z.string(),
-        valueBoolean: z.boolean(),
-      })
-      .superRefine((data, ctx) => {
-        if (data.isNull) return
-        if (data.type === 'string' && data.valueText.trim().length === 0)
-          ctx.addIssue({ code: 'custom', message: 'Informe um valor.' })
-        if (data.type === 'number' && !Number.isFinite(Number(data.valueNumberText)))
-          ctx.addIssue({ code: 'custom', message: 'Informe um número válido.' })
-      })
 
-    const result = schema.safeParse({ name: fieldName, type: fieldType, isNull: valueIsNull, valueText, valueNumberText, valueBoolean })
+    const result = validationSvc.validateAddFieldForm({
+      name: fieldName,
+      type: fieldType,
+      isNull: valueIsNull,
+      valueText,
+      valueNumberText,
+      valueBoolean,
+      parentIsArray,
+    })
 
-    if (!result.success) {
-      const msg = result.error.issues[0]?.message ?? 'Dados inválidos.'
-      if (msg === 'Informe um nome.') setNameError(msg)
-      else setValueError(msg)
+    if (!result.ok) {
+      if (result.nameError) setNameError(result.nameError)
+      if (result.valueError) setValueError(result.valueError)
 
       return
     }
@@ -114,7 +103,7 @@ export function useAddFieldForm(): {
       isNull: valueIsNull,
     })
     expandPath(selectedTarget.path)
-  }, [selectedTarget, fieldName, fieldType, valueIsNull, valueText, valueNumberText, valueNumber, valueBoolean, setNameError, setValueError, handleApplyInsert, expandPath])
+  }, [selectedTarget, fieldName, fieldType, valueIsNull, valueText, valueNumberText, valueNumber, valueBoolean, setNameError, setValueError, handleApplyInsert, expandPath, validationSvc])
 
   return {
     fieldName, fieldType, targetLabel, nameError, valueError,

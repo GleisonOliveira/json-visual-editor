@@ -1,4 +1,5 @@
 import type React from 'react'
+import { memo } from 'react'
 import { Button } from '@mui/material'
 import type { ReactNode } from 'react'
 
@@ -7,7 +8,7 @@ import type { ReactNode } from 'react'
  * Renders a MUI Button with an icon and label. Draggable state and disabled state
  * are controlled by the parent (typically PalettePanel).
  */
-export function PaletteButton(props: {
+export const PaletteButton = memo(function PaletteButton(props: {
   type: string
   icon: ReactNode
   disabled: boolean
@@ -33,4 +34,4 @@ export function PaletteButton(props: {
       {type}
     </Button>
   )
-}
+})

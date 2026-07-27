@@ -1,4 +1,5 @@
 import type React from 'react'
+import { memo } from 'react'
 import { Box, Card, CardContent, CardHeader, Typography } from '@mui/material'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
@@ -9,12 +10,15 @@ import { useJsonPanel } from './useJsonPanel'
 const readOnlyAriaLabel = EditorView.contentAttributes.of({ 'aria-label': 'Visualização de JSON' })
 const editAriaLabel = EditorView.contentAttributes.of({ 'aria-label': 'Editor de JSON' })
 
+/** Memoized json() language extension instance - created once, shared across all renders. */
+const jsonLanguage = json()
+
 /**
  * Organism: the right-panel CodeMirror-based JSON viewer/editor.
  * Displays the current JSON tree as formatted text in read-only mode.
  * Supports toggling into manual edit mode with validation.
  */
-export function JsonPanel(): React.JSX.Element {
+export const JsonPanel = memo(function JsonPanel(): React.JSX.Element {
   const { editingJson, editingText, editError, cmTheme, cmSyntax, jsonStr, handleEditorChange } = useJsonPanel()
 
   return (
@@ -32,7 +36,7 @@ export function JsonPanel(): React.JSX.Element {
               value={editingText}
               theme="none"
               basicSetup={{ drawSelection: false }}
-              extensions={[json(), cmTheme, cmSyntax, editAriaLabel]}
+              extensions={[jsonLanguage, cmTheme, cmSyntax, editAriaLabel]}
               onChange={handleEditorChange}
               style={{
                 fontSize: 14,
@@ -52,7 +56,7 @@ export function JsonPanel(): React.JSX.Element {
             value={jsonStr}
             theme="none"
             basicSetup={{ drawSelection: false }}
-            extensions={[json(), cmTheme, cmSyntax, readOnlyAriaLabel]}
+            extensions={[jsonLanguage, cmTheme, cmSyntax, readOnlyAriaLabel]}
             editable={false}
             style={{ fontSize: 14, textAlign: 'left', border: '1px solid rgba(0,0,0,0.23)', borderRadius: 4, minHeight: 300 }}
           />
@@ -60,4 +64,4 @@ export function JsonPanel(): React.JSX.Element {
       </CardContent>
     </Card>
   )
-}
+})

@@ -1,4 +1,5 @@
 import type React from 'react'
+import { memo } from 'react'
 import { Card, CardContent, CardHeader, Grid } from '@mui/material'
 import { PalettePanel } from '../../molecules/palette-panel/PalettePanel'
 import { AddFieldForm } from '../../molecules/add-field-form/AddFieldForm'
@@ -10,7 +11,7 @@ import { useVisualEditor } from './useVisualEditor'
  * Renders the drag-and-drop palette on desktop, AddFieldForm on mobile,
  * and the NodeEditor tree.
  */
-export function VisualEditor(): React.JSX.Element {
+export const VisualEditor = memo(function VisualEditor(): React.JSX.Element {
   const { editingJson } = useVisualEditor()
 
   return (
@@ -33,4 +34,4 @@ export function VisualEditor(): React.JSX.Element {
       </CardContent>
     </Card>
   )
-}
+})
