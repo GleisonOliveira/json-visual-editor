@@ -1,8 +1,28 @@
 import type React from 'react'
+import { memo } from 'react'
 import { FormControl, InputLabel, MenuItem, Select, TextField } from '@mui/material'
 import { NumberField } from '../number-field/NumberField'
 import { useValueInput } from './useValueInput'
 import type { NullableFieldType } from '../../../types'
+import { pathsEqual } from '../../../lib/pathsEqual'
+
+interface ValueInputProps {
+  value: unknown
+  path: Array<string | number>
+  nodeType: NullableFieldType
+  locked: boolean
+  labelId?: string
+}
+
+function compareValueInputProps(prev: ValueInputProps, next: ValueInputProps): boolean {
+  return (
+    prev.value === next.value
+    && prev.nodeType === next.nodeType
+    && prev.locked === next.locked
+    && prev.labelId === next.labelId
+    && pathsEqual(prev.path, next.path)
+  )
+}
 
 /**
  * Atom: renders the appropriate value input for a JSON node based on its type.
@@ -13,13 +33,7 @@ import type { NullableFieldType } from '../../../types'
  *
  * Used inside InlineNodeEditor and the root NodeEditor.
  */
-export function ValueInput(props: {
-  value: unknown
-  path: Array<string | number>
-  nodeType: NullableFieldType
-  locked: boolean
-  labelId?: string
-}): React.JSX.Element | null {
+export const ValueInput = memo(function ValueInput(props: ValueInputProps): React.JSX.Element | null {
   const { value, path, nodeType, locked, labelId } = props
   const { handleStringChange, handleNumberChange, handleBooleanChange } = useValueInput(path)
 
@@ -69,4 +83,4 @@ export function ValueInput(props: {
   }
 
   return null
-}
+}, compareValueInputProps)

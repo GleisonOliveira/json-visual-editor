@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useMediaQuery, useTheme } from '@mui/material'
 import { useUiStore } from '../../../store/uiStore'
 import { useJsonStore } from '../../../store/jsonStore'
@@ -21,7 +21,7 @@ export function useJsonToolbar(): {
   const { jsonValue, setJsonValue } = useJsonStore()
   const theme = useTheme()
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
-  const jsonStr = JSON.stringify(jsonValue, null, 2)
+  const jsonStr = useMemo(() => JSON.stringify(jsonValue, null, 2), [jsonValue])
 
   const handleEdit = useCallback(() => {
     startEditing(jsonStr)

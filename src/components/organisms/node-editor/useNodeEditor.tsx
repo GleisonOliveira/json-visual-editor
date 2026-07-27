@@ -21,14 +21,17 @@ export function useNodeEditor(locked: boolean): {
   expandPath: (path: Array<string | number>) => void
   collapseAll: () => void
   expandAll: (allKeys: string[]) => void
-  allComplexKeys: string[]
   hasComplex: boolean
   renderChildren: (v: JsonValue, parentPath: Array<string | number>) => React.ReactNode | null
 } {
   const { jsonValue } = useJsonStore()
-  const { expanded, toggleExpand, expandPath, collapseAll, expandAll } = useUiStore()
+  const toggleExpand = useUiStore((s) => s.toggleExpand)
+  const expandPath = useUiStore((s) => s.expandPath)
+  const collapseAll = useUiStore((s) => s.collapseAll)
+  const expandAll = useUiStore((s) => s.expandAll)
+  const expanded = useUiStore((s) => s.expanded)
   const container = useContainer()
-  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const treeSvc = useMemo(() => container.get<JsonTreeService>(TYPES.JsonTreeService), [container])
   const { isArray, isObject } = treeSvc
   const value = jsonValue
 
@@ -43,8 +46,20 @@ export function useNodeEditor(locked: boolean): {
     return 'null'
   }, [value, isArray, isObject])
 
-  const allComplexKeys = useMemo(() => treeSvc.collectComplexKeys(value, []), [value, treeSvc])
-  const hasComplex = allComplexKeys.length > 0
+  const hasComplex = useMemo(() => treeSvc.isComplexValue(value), [value, treeSvc])
+
+  const expandAllLazy = useCallback((allKeys: string[]) => {
+    if (allKeys.length > 0) {
+      expandAll(allKeys)
+
+      return
+    }
+
+    const currentTreeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+    const currentValue = useJsonStore.getState().jsonValue
+    const keys = currentTreeSvc.collectComplexKeys(currentValue, [])
+    expandAll(keys)
+  }, [expandAll, container])
 
   const renderChildren = useCallback(
     (v: JsonValue, parentPath: Array<string | number>): React.ReactNode | null => {
@@ -76,8 +91,8 @@ export function useNodeEditor(locked: boolean): {
 
   return {
     value, nodeType,
-    expanded, toggleExpand, expandPath, collapseAll, expandAll,
-    allComplexKeys, hasComplex,
+    expanded, toggleExpand, expandPath, collapseAll, expandAll: expandAllLazy,
+    hasComplex,
     renderChildren,
   }
 }

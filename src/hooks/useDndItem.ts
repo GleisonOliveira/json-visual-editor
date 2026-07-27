@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import type { DndPayload } from '../types'
 
 export function useDndItem(path: Array<string | number>, fromKey?: string): {
@@ -19,6 +19,7 @@ export function useDndItem(path: Array<string | number>, fromKey?: string): {
   const [isOver, setIsOver] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const depth = React.useRef(0)
+  const onDropRef = useRef<((payload: DndPayload) => void) | null>(null)
 
   const dragHandleProps = {
     draggable: true as const,
@@ -31,23 +32,29 @@ export function useDndItem(path: Array<string | number>, fromKey?: string): {
     onDragEnd: () => { setIsDragging(false); setIsOver(false); depth.current = 0 },
   }
 
-  const dropZoneProps = (onDrop: (payload: DndPayload) => void): {
+  const onDragEnter = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) }, [])
+  const onDragLeave = useCallback((e: React.DragEvent) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) }, [])
+  const onDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' }, [])
+
+  const stableDropHandler = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation()
+    depth.current = 0; setIsOver(false)
+    const raw = e.dataTransfer.getData('application/jsonve-dnd')
+    if (!raw) return
+
+    if (onDropRef.current) onDropRef.current(JSON.parse(raw) as DndPayload)
+  }, [])
+
+  const dropZoneProps = useCallback((onDrop: (payload: DndPayload) => void): {
     onDragEnter: (e: React.DragEvent) => void
     onDragLeave: (e: React.DragEvent) => void
     onDragOver: (e: React.DragEvent) => void
     onDrop: (e: React.DragEvent) => void
-  } => ({
-    onDragEnter: (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); depth.current++; setIsOver(true) },
-    onDragLeave: (e: React.DragEvent) => { e.stopPropagation(); depth.current--; if (depth.current === 0) setIsOver(false) },
-    onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move' },
-    onDrop: (e: React.DragEvent) => {
-      e.preventDefault(); e.stopPropagation()
-      depth.current = 0; setIsOver(false)
-      const raw = e.dataTransfer.getData('application/jsonve-dnd')
-      if (!raw) return
-      onDrop(JSON.parse(raw) as DndPayload)
-    },
-  })
+  } => {
+    onDropRef.current = onDrop
+
+    return { onDragEnter, onDragLeave, onDragOver, onDrop: stableDropHandler }
+  }, [onDragEnter, onDragLeave, onDragOver, stableDropHandler])
 
   return { isOver, isDragging, dragHandleProps, dropZoneProps }
 }

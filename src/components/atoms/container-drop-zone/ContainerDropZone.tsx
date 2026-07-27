@@ -1,27 +1,39 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, memo } from 'react'
 import { Box, Typography } from '@mui/material'
-import type { DndPayload, JsonValue } from '../../../types'
+import type { DndPayload } from '../../../types'
 import { useJsonStore } from '../../../store/jsonStore'
 import { useUiStore } from '../../../store/uiStore'
 import { useContainer } from '../../../useContainer'
 import { TYPES } from '../../../core/types'
 import type { JsonTreeService } from '../../../services/JsonTreeService'
+import { pathsEqual } from '../../../lib/pathsEqual'
+import { expandInserted } from '../../../lib/expandInserted'
+
+interface ContainerDropZoneProps {
+  parentPath: Array<string | number>
+  parentKind: 'object' | 'array'
+  locked?: boolean
+}
+
+function compareContainerDropZoneProps(prev: ContainerDropZoneProps, next: ContainerDropZoneProps): boolean {
+  return (
+    prev.parentKind === next.parentKind
+    && prev.locked === next.locked
+    && pathsEqual(prev.parentPath, next.parentPath)
+  )
+}
 
 /**
  * Atom: a dashed-border drop zone for drag-and-drop operations.
  * Accepts palette drops (insert new field) and reorder drops (move existing node).
  * Visual feedback changes on drag-over. Used inside ObjectItem, ArrayItem, and NodeEditor.
  */
-export function ContainerDropZone(props: {
-  parentPath: Array<string | number>
-  parentKind: 'object' | 'array'
-  locked?: boolean
-}): React.JSX.Element {
+export const ContainerDropZone = memo(function ContainerDropZone(props: ContainerDropZoneProps): React.JSX.Element {
   const { parentPath, locked } = props
   const { handleMove, handleInsert } = useJsonStore()
   const { expandPath } = useUiStore()
   const container = useContainer()
-  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const treeSvc = useMemo(() => container.get<JsonTreeService>(TYPES.JsonTreeService), [container])
   const { isPalettePayload, isAncestorOrEqual } = treeSvc
   const [isOver, setIsOver] = useState(false)
   const depth = React.useRef(0)
@@ -41,13 +53,7 @@ export function ContainerDropZone(props: {
 
         if (isPalettePayload(payload)) {
           handleInsert(payload.paletteType, parentPath, null)
-          const newJson = useJsonStore.getState().jsonValue
-          let node: JsonValue = newJson
-          for (const seg of parentPath) node = (node as Record<string | number, JsonValue>)[seg] as JsonValue
-          let newKey: string | number
-          if (Array.isArray(node)) newKey = node.length - 1
-          else newKey = Object.keys(node as object).at(-1)!
-          expandPath([...parentPath, newKey])
+          expandInserted(parentPath, expandPath)
 
           return
         }
@@ -72,4 +78,4 @@ export function ContainerDropZone(props: {
       </Typography>
     </Box>
   )
-}
+}, compareContainerDropZoneProps)

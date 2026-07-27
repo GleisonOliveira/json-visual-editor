@@ -1,32 +1,20 @@
 import type React from 'react'
+import { memo, useMemo } from 'react'
 import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import { Trash2, GripVertical, ChevronDown, ChevronRight } from 'lucide-react'
 import { InlineNodeEditor } from '../inline-node-editor/InlineNodeEditor'
 import { ContainerDropZone } from '../../atoms/container-drop-zone/ContainerDropZone'
 import { useDndItem } from '../../../hooks/useDndItem'
 import { useArrayItem } from './useArrayItem'
-import { useJsonStore } from '../../../store/jsonStore'
 import { useContainer } from '../../../useContainer'
 import { TYPES } from '../../../core/types'
 import type { JsonTreeService } from '../../../services/JsonTreeService'
 import type { JsonValue, JsonArray } from '../../../types'
+import { expandInserted } from '../../../lib/expandInserted'
+import { pathsEqual } from '../../../lib/pathsEqual'
+import { setsEqual } from '../../../lib/setsEqual'
 
-function expandInserted(parentPath: Array<string | number>, expandPathFn: (p: Array<string | number>) => void): void {
-  const newJson = useJsonStore.getState().jsonValue
-  let node: JsonValue = newJson
-  for (const seg of parentPath) node = (node as Record<string | number, JsonValue>)[seg] as JsonValue
-  let newKey: string | number
-  if (Array.isArray(node)) newKey = node.length - 1
-  else newKey = Object.keys(node as object).at(-1)!
-  expandPathFn([...parentPath, newKey])
-}
-
-/**
- * Molecule: renders a single indexed item inside an array node.
- * Features: delete, drag-and-drop reordering, expand/collapse for nested complex values,
- * and a nested ContainerDropZone when expanded.
- */
-export function ArrayItem(props: {
+interface ArrayItemProps {
   index: number
   item: JsonValue
   parentPath: Array<string | number>
@@ -36,11 +24,32 @@ export function ArrayItem(props: {
   expandPath: (path: Array<string | number>) => void
   renderChildren: (v: JsonValue, path: Array<string | number>) => React.ReactNode
   locked: boolean
-}): React.JSX.Element {
+}
+
+function compareArrayItemProps(prev: ArrayItemProps, next: ArrayItemProps): boolean {
+  return (
+    prev.index === next.index
+    && prev.item === next.item
+    && prev.locked === next.locked
+    && prev.arr === next.arr
+    && setsEqual(prev.expanded, next.expanded)
+    && prev.toggleExpand === next.toggleExpand
+    && prev.expandPath === next.expandPath
+    && prev.renderChildren === next.renderChildren
+    && pathsEqual(prev.parentPath, next.parentPath)
+  )
+}
+
+/**
+ * Molecule: renders a single indexed item inside an array node.
+ * Features: delete, drag-and-drop reordering, expand/collapse for nested complex values,
+ * and a nested ContainerDropZone when expanded.
+ */
+export const ArrayItem = memo(function ArrayItem(props: ArrayItemProps): React.JSX.Element {
   const { index: i, item, parentPath, arr, expanded, toggleExpand, expandPath, renderChildren, locked } = props
   const { handleUpdate, handleMove, handleInsert } = useArrayItem()
   const container = useContainer()
-  const treeSvc = container.get<JsonTreeService>(TYPES.JsonTreeService)
+  const treeSvc = useMemo(() => container.get<JsonTreeService>(TYPES.JsonTreeService), [container])
   const { isComplexValue, isArray, isPalettePayload, isAncestorOrEqual } = treeSvc
   const itemPath = [...parentPath, i]
   const { isOver, isDragging, dragHandleProps, dropZoneProps } = useDndItem(itemPath)
@@ -99,4 +108,4 @@ export function ArrayItem(props: {
       )}
     </Box>
   )
-}
+}, compareArrayItemProps)

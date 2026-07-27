@@ -15,7 +15,7 @@ export function NodeEditor({ locked }: { locked: boolean }): React.JSX.Element {
   const {
     value, nodeType,
     collapseAll, expandAll,
-    allComplexKeys, hasComplex,
+    hasComplex,
     renderChildren,
   } = useNodeEditor(locked)
 
@@ -32,7 +32,7 @@ export function NodeEditor({ locked }: { locked: boolean }): React.JSX.Element {
     <Box>
       {hasComplex && (
         <Box sx={{ display: 'flex', mb: 1.5, justifyContent: 'flex-end' }}>
-          <Button variant="outlined" size="small" onClick={() => expandAll(allComplexKeys)}>
+          <Button variant="outlined" size="small" onClick={() => expandAll([])}>
             Expandir todos
           </Button>
           <Button variant="outlined" size="small" onClick={() => collapseAll()}>

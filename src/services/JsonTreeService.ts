@@ -28,27 +28,55 @@ export class JsonTreeService {
     return cur
   }
 
-  /** Immutably applies `updater` to the node at `path`, returning a new tree. */
+  /** Immutably applies `updater` to the node at `path`, returning a new tree.
+   *  Uses path-only structural sharing: only nodes along the mutation path are cloned,
+   *  all other subtrees retain their original references. */
   setAtPath(
     root: JsonValue,
     path: Array<string | number>,
     updater: (node: JsonValue) => JsonValue
   ): JsonValue {
-    const clone = structuredClone(root)
-    if (path.length === 0) return updater(clone)
-    let cur = clone as JsonObject | JsonArray
+    if (path.length === 0) return updater(root)
 
-    for (let i = 0; i < path.length; i++) {
-      const seg = path[i]
+    const newRoot = this.clonePath(root, path, 0, updater)
 
-      if (i === path.length - 1) {
-        (cur as JsonObject)[seg as string] = updater((cur as JsonObject)[seg as string] as JsonValue)
+    return newRoot
+  }
+
+  /** Recursively clones only the nodes along the path, sharing all other subtrees by reference. */
+  private clonePath(
+    node: JsonValue,
+    path: Array<string | number>,
+    depth: number,
+    updater: (node: JsonValue) => JsonValue
+  ): JsonValue {
+    const seg = path[depth]
+    const isLast = depth === path.length - 1
+
+    if (Array.isArray(node)) {
+      const clone = [...node]
+
+      if (isLast) {
+        clone[seg as number] = updater(clone[seg as number] as JsonValue)
       } else {
-        cur = (cur as JsonObject)[seg as string] as JsonObject | JsonArray
+        clone[seg as number] = this.clonePath(clone[seg as number] as JsonValue, path, depth + 1, updater)
       }
+
+      return clone
+    } else if (typeof node === 'object' && node !== null) {
+      const obj = node as JsonObject
+      const clone: JsonObject = { ...obj }
+
+      if (isLast) {
+        clone[seg as string] = updater(clone[seg as string] as JsonValue)
+      } else {
+        clone[seg as string] = this.clonePath(clone[seg as string] as JsonValue, path, depth + 1, updater)
+      }
+
+      return clone
     }
 
-    return clone
+    return node
   }
 
   /** Immutably removes the node at `path` (object key delete or array splice). */

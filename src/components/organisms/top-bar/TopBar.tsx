@@ -1,4 +1,5 @@
 import type React from 'react'
+import { memo } from 'react'
 import { Box, IconButton, Tooltip, Typography } from '@mui/material'
 import { Braces, Sun, Moon } from 'lucide-react'
 import { useTopBar } from './useTopBar'
@@ -8,7 +9,7 @@ import { useTopBar } from './useTopBar'
  * Renders the app title "JSON Visual Editor" with a Braces icon,
  * a dark/light theme toggle, and a GitHub link.
  */
-export function TopBar(): React.JSX.Element {
+export const TopBar = memo(function TopBar(): React.JSX.Element {
   const { mode, toggleMode } = useTopBar()
 
   return (
@@ -56,4 +57,4 @@ export function TopBar(): React.JSX.Element {
       </Box>
     </Box>
   )
-}
+})

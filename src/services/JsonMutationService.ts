@@ -1,5 +1,6 @@
 import type { JsonValue, JsonObject, DndPayload, NodeTarget, InsertValueOpts, BuildDefaultValueOpts } from '../types'
 import { JsonTreeService } from './JsonTreeService'
+import { pathsEqual } from '../lib/pathsEqual'
 
 /**
  * Mutation operations on the JSON tree — creating, moving, and updating nodes.
@@ -38,11 +39,11 @@ export class JsonMutationService {
     const fromParentPath = fromPath.slice(0, -1)
     const fromSlot = fromPath[fromPath.length - 1]
     if (
-      JSON.stringify(fromParentPath) === JSON.stringify(toParentPath) &&
+      pathsEqual(fromParentPath, toParentPath) &&
       toKey === fromSlot
     ) return root
     const value = this.tree.getAtPath(root, fromPath)
-    const sameParent = JSON.stringify(fromParentPath) === JSON.stringify(toParentPath)
+    const sameParent = pathsEqual(fromParentPath, toParentPath)
     const movingDown = sameParent && toKey !== null && (
       typeof toKey === 'number'
         ? (fromSlot as number) < (toKey as number)
@@ -81,7 +82,8 @@ export class JsonMutationService {
     return this.tree.setAtPath(root, path, () => next)
   }
 
-  /** Inserts a field via the form (object key or array push). */
+  /** Inserts a field via the form (object key or array push).
+   *  Uses immutable return values instead of in-place mutation. */
   applyInsert(
     root: JsonValue,
     target: NodeTarget,
@@ -102,7 +104,7 @@ export class JsonMutationService {
     if (target.kind === 'object') {
       return this.tree.setAtPath(root, target.path, (obj: JsonValue) => {
         if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-          (obj as JsonObject)[cleanName || 'newField'] = valueToInsert
+          return { ...(obj as JsonObject), [cleanName || 'newField']: valueToInsert }
         }
 
         return obj
@@ -111,7 +113,7 @@ export class JsonMutationService {
 
     if (target.kind === 'array') {
       return this.tree.setAtPath(root, target.path, (arr: JsonValue) => {
-        if (Array.isArray(arr)) arr.push(valueToInsert)
+        if (Array.isArray(arr)) return [...arr, valueToInsert]
 
         return arr
       })
